@@ -117,8 +117,8 @@ const seagulls = {
 
   _createPingPongLayout( device, label='ping-pong', uniformCount=0, bufferCount=0 ) {
     const entries = []
-
     // very unoptimized... every buffer has max visibility
+    // 
     // and every buffer is read/write storage
     for( let i = 0; i < bufferCount; i++ ) {
       const even = i % 2 === 0
@@ -146,14 +146,14 @@ const seagulls = {
       entries
     })
 
-
     return bindGroupLayout
   },
 
 
-  createRenderLayout( device, label='render', shouldAddBuffer=1, uniforms=null, backBuffer=true, textures=null ) {
+  // TODO fix should add buffer
+  createRenderLayout( device, label='render', shouldAddBuffer=0, uniforms=null, backBuffer=true, textures=null ) {
     let count = 0
-    const entries = []
+    const entries = [] 
 
     if( uniforms !== null ) {
       for( let key of Object.keys( Object.getOwnPropertyDescriptors( uniforms ) ) ) {
@@ -233,8 +233,10 @@ const seagulls = {
 
     let count = 0 
 
+    
     if( uniform !== null ) {
       for( let key of Object.keys( Object.getOwnPropertyDescriptors( uniform ) ) ) {
+        if( key === 'name' || key === 'length' ) continue
         const uni = {
           binding:  count++,
           resource: { buffer: uniform[ key ] }
@@ -264,7 +266,6 @@ const seagulls = {
       entriesB.push( textureuni )
     }
 
-    
     if( textures !== null ) {
       textures.forEach( tex => {
         const sampler = device.createSampler({
@@ -429,19 +430,27 @@ const seagulls = {
     return p
   },
 
-  createRenderStage( device, shader, storage=null, presentationFormat, uniforms=null, textures=null ) {
+  createRenderStage( device, shader, storage=null, presentationFormat, uniforms=null, textures=null, useBackBuffer=true ) {
     const [quadBuffer, quadBufferLayout] = seagulls.createQuadBuffer( device )
     //console.log( storage, Object.keys( storage ) )n
     const storageLength = storage === null ? 0 : Object.keys(storage).length
 
-    const renderLayout  = seagulls.createRenderLayout( device, 'seagull layout', storageLength, uniforms, true, textures )
+    const renderLayout  = seagulls.createRenderLayout( 
+      device, 
+      'seagull render layout', 
+      storageLength, 
+      uniforms, 
+      useBackBuffer, 
+      textures 
+    )
+
     const bindGroups    = seagulls._createPingPongBindGroups( 
       device, 
       renderLayout, 
       storage, 
       uniforms, 
       'render', 
-      true, 
+      useBackBuffer, 
       textures
     )
 
@@ -450,13 +459,20 @@ const seagulls = {
     return [ pipeline, bindGroups, quadBuffer ]
   },
 
-  createSimulationStage( device, computeShader, buffers=null, uniforms=null ) {
-    const uniformsLength = uniforms === null 
+  createSimulationStage( device, computeShader, buffers=null, uniforms=null, useBackBuffer=false ) {
+    const uniformsLength = uniforms === null || typeof uniforms === 'function' 
       ? 0 
-      : Object.keys( Object.getOwnPropertyDescriptors( uniforms ) ).length
+      : Object.keys( Object.getOwnPropertyDescriptors( uniforms ) ).length  
 
     const pingPongLayout     = seagulls._createPingPongLayout( device, 'ping', uniformsLength, buffers.length )
-    const pingPongBindGroups = seagulls._createPingPongBindGroups( device, pingPongLayout, buffers, uniforms )
+    const pingPongBindGroups = seagulls._createPingPongBindGroups( 
+      device, 
+      pingPongLayout, 
+      buffers, 
+      uniforms,
+      'compute',
+      useBackBuffer
+    )
     const simPipeline        = seagulls.createSimulationPipeline( device, pingPongLayout, computeShader )
 
     return [ simPipeline, pingPongBindGroups ]
@@ -571,12 +587,8 @@ const seagulls = {
     if( shouldCopy ) {
       // Copy the rendering results from the swapchain into |backTexture|.
       encoder.copyTextureToTexture(
-        {
-          texture: swapChainTexture,
-        },
-        {
-          texture: backTexture,
-        },
+        { texture: swapChainTexture },
+        { texture: backTexture },
         [context.canvas.width, context.canvas.height]
       )
     }
@@ -657,6 +669,7 @@ const seagulls = {
       frame:      0,
       times:      1,
       clearColor: [0,0,0,1],
+      shouldUseBackBuffer:true,
       __computeStages: [],
       __textures:null
     })
@@ -689,17 +702,27 @@ const seagulls = {
       return this
     },
 
+    backbuffer( use=true ) {
+      this.shouldUseBackBuffer = use
+      return this
+    },
+
     clear( clearColor ) {
       this.clearColor = clearColor 
       return this
     },
 
-    compute( shader, args ) {
-      let __uniforms = null
+    compute( shader, count=1, args ) {
+      let __uniforms = {}
       if( args?.uniforms !== undefined ) {
-        __uniforms = {}
         for( let u of args.uniforms ) {
           __uniforms[ u ] = this.uniforms[ u ]
+        }
+      }else{
+        if( typeof this.uniforms !== 'function' ) {
+          for( let u of Object.getOwnPropertyNames( this.uniforms ) ) {
+            __uniforms[ u ] = this.uniforms[ u ]
+          }
         }
       }
 
@@ -713,13 +736,14 @@ const seagulls = {
         this.device, 
         shader, 
         Object.values( this.__buffers ), 
-        __uniforms
+        __uniforms,
+        this.shouldUseBackBuffer
       )
 
       if( args?.workgroupCount !== undefined ) {
         this.workgroupCount = args.workgroupCount
       }else{
-        this.workgroupCount = 128//Math.round(this.canvas.width / 8)
+        this.workgroupCount = count//Math.round(this.canvas.width / 8)
       }
 
       this.__computeStages.push({ 
@@ -746,8 +770,10 @@ const seagulls = {
           __uniforms[ u ] = this.uniforms[ u ]
         }
       }else{
-        for( let u of Object.getOwnPropertyNames( this.uniforms ) ) {
-          __uniforms[ u ] = this.uniforms[ u ]
+        if( typeof this.uniforms !== 'function' ) {
+          for( let u of Object.getOwnPropertyNames( this.uniforms ) ) {
+            __uniforms[ u ] = this.uniforms[ u ]
+          }
         }
       }
 
@@ -756,13 +782,15 @@ const seagulls = {
           this.__buffers[ key ].pingpong = true
         })
       }
+
       const [ renderPipeline, renderBindGroups, quadBuffer ] = seagulls.createRenderStage( 
         this.device, 
         shader, 
         this.__buffers !== undefined ? Object.values(this.__buffers) : null, 
         this.presentationFormat,
         __uniforms,
-        this.__textures
+        this.__textures,
+        this.shouldUseBackBuffer
       )
 
       Object.assign( this, { renderPipeline, renderBindGroups, quadBuffer })
@@ -805,6 +833,7 @@ const seagulls = {
         this.context,
         this.__textures
       )
+      
 
       if( time === null ) {
         window.requestAnimationFrame( ()=> { this.run( instanceCount ) })
