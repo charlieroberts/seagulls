@@ -137,7 +137,11 @@ const seagulls = {
       for( let i = 0; i < uniformCount; i++ ) {
         entries.unshift({
           binding:i,
-          visibility: GPUShaderStage.COMPUTE
+          visibility: GPUShaderStage.COMPUTE,
+          // must have this next line even though it is empty
+          // otherwise bad bad things happen in Chrome
+          // (and apparently it's part of the spec)
+          buffer:{}
         })
       }
     }
