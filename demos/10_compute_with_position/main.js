@@ -11,11 +11,9 @@ for( let i = 0; i < size; i++ ) {
   state[ i ] = Math.random()
 }
 
-const workgroup_size = Math.ceil( size / 64 )  
-
 sg.buffers({ state })
   .uniforms({ resolution:[ window.innerWidth, window.innerHeight ] })
   .backbuffer( false )
-  .compute( compute, [workgroup_size, 1, 1] )
+  .compute( compute, [ Math.ceil( window.innerWidth / 8), Math.ceil(window.innerHeight / 8), 1] )
   .render( render )
   .run()

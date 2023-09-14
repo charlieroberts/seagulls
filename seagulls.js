@@ -502,25 +502,6 @@ const seagulls = {
     return idx
   },
 
-  //render( device, encoder, view, clearValue, vertexBuffer, pipeline, bindGroups, count=1,idx=0 ) {
-  //  const pass = encoder.beginRenderPass({
-  //    label: 'render',
-  //    colorAttachments: [{
-  //      view,
-  //      clearValue,
-  //      loadOp:  'clear',
-  //      storeOp: 'store',
-  //    }]
-  //  })
-  //  pass.setPipeline( pipeline )
-  //  pass.setVertexBuffer( 0, vertexBuffer )
-  //  pass.setBindGroup( 0, bindGroups[ idx++%2 ]  )
-  //  pass.draw(6, count)  
-  //  pass.end()
-  //  device.queue.submit([ encoder.finish() ])
-  //  return idx
-  //},
-
   render( device, encoder, view, clearValue, vertexBuffer, pipeline, bindGroups, count=1, idx=0, context=null, textures=null ) {
     const shouldCopy = context !== null
 
@@ -751,7 +732,7 @@ const seagulls = {
       }
 
       this.__computeStages.push({ 
-        simPipeline, simBindGroups, step:0, times:1, workgroupCount:this.workgroupCount  
+        simPipeline, simBindGroups, step:0, times:this.times, workgroupCount:this.workgroupCount  
       })
 
       Object.assign( this, { simPipeline, simBindGroups })
