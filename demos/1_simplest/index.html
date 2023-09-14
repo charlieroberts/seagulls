@@ -3,11 +3,25 @@
   <head>
     <meta charset='utf-8'>
     <script src='main.js' type='module'></script>
+    <script src='https://cdn.jsdelivr.net/npm/microlight@latest'></script>
 
     <link href='../shared.css' rel='stylesheet'>
     <link rel='shortcut icon' href='data:image/x-icon;,' type='image/x-icon'> 
   </head>
   <body>
     <canvas></canvas>
+    <code class='code'>
+      // seagulls - simplest
+    </code>
   </body>
+  <script>
+    window.onload = function() {
+      fetch( './main.js' )
+        .then( res => res.text() )
+        .then( txt => {
+          document.querySelector('code').innerHTML = txt
+          microlight.reset('code') 
+        })
+    }
+  </script>
 </html>

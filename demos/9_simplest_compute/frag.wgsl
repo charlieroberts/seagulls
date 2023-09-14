@@ -2,6 +2,5 @@
 
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
-  let v = state;
-  return vec4f( v,v,v, 1.);
+  return vec4f( state );
 }

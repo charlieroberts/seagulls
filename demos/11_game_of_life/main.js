@@ -11,6 +11,7 @@ for( let i = 0; i < size; i++ ) {
   state[ i ] = Math.round( Math.random() )
 }
 
+//window.addEventListener( 'load', function() {
 sg.buffers({ stateA:state, stateB:state })
   .uniforms({ resolution:[ window.innerWidth, window.innerHeight ] })
   .backbuffer( false )
@@ -22,3 +23,4 @@ sg.buffers({ stateA:state, stateB:state })
   )
   .render( render )
   .run()
+

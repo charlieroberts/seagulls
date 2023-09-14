@@ -32,29 +32,26 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return vec4f( value, 0., 1.-value, 1. );
 }`
 
-async function main() {
-  // initialize seagulls
-  const sg = await seagulls.init()
-  
-  // create a variable on the CPU to hold our
-  // frame count
-  let frame = 0
+// initialize seagulls
+const sg = await seagulls.init()
 
-  // call .uniforms and give dictionary of
-  // key value pairs. The value will specify
-  // the initial value for the uniform. The
-  // key will enable us to update the uniform
-  // later.
+// create a variable on the CPU to hold our
+// frame count
+let frame = 0
 
-  sg.uniforms({ frame:0 })
+// call .uniforms and give dictionary of
+// key value pairs. The value will specify
+// the initial value for the uniform. The
+// key will enable us to update the uniform
+// later.
 
-  // define an onframe event that updates
-  // our frame uniform
+sg.uniforms({ frame:0 })
 
-  sg.onframe( ()=> sg.uniforms.frame = frame++ ) 
+// define an onframe event that updates
+// our frame uniform
 
-  // run the shader
-  sg.render( shader ).run()
-}
+sg.onframe( ()=> sg.uniforms.frame = frame++ ) 
 
-main()
+// run the shader
+sg.render( shader ).run()
+
