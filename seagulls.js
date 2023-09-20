@@ -12,6 +12,19 @@ const CONSTANTS = {
 
   workgroupSize: 8,
 
+  blend:{
+    color: {
+      srcFactor: 'src-alpha',
+      dstFactor: 'one',
+      operation: 'add',
+    },
+    alpha: {
+      srcFactor: 'zero',
+      dstFactor: 'one',
+      operation: 'add',
+    }
+  },
+
   vertex:`@vertex 
 fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
   return vec4f( input, 0., 1.); 
@@ -56,8 +69,11 @@ const seagulls = {
       usage:GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
     })
 
-    canvas.width  = window.innerWidth
-    canvas.height = window.innerHeight
+    const devicePixelRatio = window.devicePixelRatio || 1
+    seagulls.width  = canvas.width  = Math.floor(window.innerWidth ) // * devicePixelRatio)
+    seagulls.height = canvas.height = Math.floor(window.innerHeight) //* devicePixelRatio)
+    canvas.style.height = seagulls.height + 'px'
+    canvas.style.width  = seagulls.width  + 'px'
 
     backTexture = seagulls.createTexture( device, format, canvas )
 
@@ -348,7 +364,7 @@ const seagulls = {
 
     return bindGroups
   },
-  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout, textures ) {
+  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout, textures, shouldBlend=false ) {
     const module = device.createShaderModule({
       label: 'main render',
       code
@@ -392,6 +408,8 @@ const seagulls = {
         entryPoint: "fs",
         targets: [{
           format: presentationFormat,
+          blend: shouldBlend ? CONSTANTS.blend : undefined
+
           /*blend:{
             color: {
               srcFactor: 'src-alpha',
@@ -434,7 +452,7 @@ const seagulls = {
     return p
   },
 
-  createRenderStage( device, shader, storage=null, presentationFormat, uniforms=null, textures=null, useBackBuffer=true ) {
+  createRenderStage( device, shader, storage=null, presentationFormat, uniforms=null, textures=null, useBackBuffer=true, useBlend=false ) {
     const [quadBuffer, quadBufferLayout] = seagulls.createQuadBuffer( device )
     //console.log( storage, Object.keys( storage ) )n
     const storageLength = storage === null ? 0 : Object.keys(storage).length
@@ -458,7 +476,7 @@ const seagulls = {
       textures
     )
 
-    const pipeline  = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout, textures )
+    const pipeline  = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout, textures, useBlend )
 
     return [ pipeline, bindGroups, quadBuffer ]
   },
@@ -574,7 +592,7 @@ const seagulls = {
       encoder.copyTextureToTexture(
         { texture: swapChainTexture },
         { texture: backTexture },
-        [context.canvas.width, context.canvas.height]
+        [ seagulls.width, seagulls.height]
       )
     }
 
@@ -655,6 +673,9 @@ const seagulls = {
       times:      1,
       clearColor: [0,0,0,1],
       shouldUseBackBuffer:true,
+      width:  seagulls.width,
+      height: seagulls.height,
+      __blend: false,
       __computeStages: [],
       __textures:null
     })
@@ -667,7 +688,7 @@ const seagulls = {
       this.__buffers = {}
       Object.entries(_buffers).forEach( ([k,v]) => {
         const usage = v.usage !== undefined ? v.usage : CONSTANTS.defaultStorageFlags
-        this.__buffers[ k ] = seagulls.createStorageBuffer( this.device, v, 'k', usage )
+        this.__buffers[ k ] = seagulls.createStorageBuffer( this.device, v, k, usage )
       })
       return this
     },
@@ -775,7 +796,8 @@ const seagulls = {
         this.presentationFormat,
         __uniforms,
         this.__textures,
-        this.shouldUseBackBuffer
+        this.shouldUseBackBuffer,
+        this.__blend
       )
 
       Object.assign( this, { renderPipeline, renderBindGroups, quadBuffer })
@@ -784,6 +806,11 @@ const seagulls = {
 
     onframe( fnc ) {
       this.__onframe = fnc 
+      return this
+    },
+
+    blend( shouldBlend=false ) {
+      this.__blend = shouldBlend
       return this
     },
 
