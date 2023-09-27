@@ -689,7 +689,14 @@ const seagulls = {
       Object.entries(_buffers).forEach( ([k,v]) => {
         const usage = v.usage !== undefined ? v.usage : CONSTANTS.defaultStorageFlags
         this.__buffers[ k ] = seagulls.createStorageBuffer( this.device, v, k, usage )
+        this.__buffers[ k ].clear = ()=> {
+          v.fill(0)
+          this.device.queue.writeBuffer(
+            this.__buffers[k], 0, v, 0, v.length * mult 
+          )
+        }
       })
+      this.buffers = this.__buffers
       return this
     },
 
