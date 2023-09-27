@@ -7,8 +7,6 @@ const WORKGROUP_SIZE = 4,
 const W = Math.round( window.innerWidth  / GRID_SIZE ),
       H = Math.round( window.innerHeight / GRID_SIZE )
 
-const mult = navigator.userAgent.indexOf('Chrome') === -1 ? 4 : 1
-
 const render_shader = seagulls.constants.vertex + `
 struct VertexInput {
   @location(0) pos: vec2f,
@@ -33,7 +31,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   let p = pheromones[ u32(pidx) ];
   let v = render[ u32(pidx) ];
 
-  let out = select( vec3(p) , vec3(1.,0.,0.), v==1. );
+  let out = select( vec3(p) , vec3(1.,0.,0.), v == 1. );
   
   return vec4f( out, 1. );
 }`
@@ -60,7 +58,7 @@ fn pheromoneIndex( vant_pos: vec2f ) -> u32 {
 }
 
 @compute
-@workgroup_size(4,4,1)
+@workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE},1)
 
 fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   let pi2   = ${Math.PI*2};
@@ -93,27 +91,27 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   render[ pIndex ] = 1.;
 }`
  
-const s = await seagulls.init()
-
 const NUM_PROPERTIES = 4 // must be evenly divisble by 4!
-const pheromones = new Float32Array( W*H )
-const vants      = new Float32Array( NUM_AGENTS * NUM_PROPERTIES )
-const vants_render = new Float32Array( W*H )
+const pheromones   = new Float32Array( W*H ) // hold pheromone data
+const vants_render = new Float32Array( W*H ) // hold info to help draw vants
+const vants        = new Float32Array( NUM_AGENTS * NUM_PROPERTIES ) // hold vant info
 
 for( let i = 0; i < NUM_AGENTS * NUM_PROPERTIES; i+= NUM_PROPERTIES ) {
   vants[ i ]   = Math.floor( Math.random() * W )
   vants[ i+1 ] = Math.floor( Math.random() * H )
-  vants[ i+2 ] = 0
-  vants[ i+3 ] = 0
+  vants[ i+2 ] = 0 // this is used to hold direction
+  vants[ i+3 ] = 0 // this could be used to hold vant "type"
 }
 
-s.buffers({
-  vants:vants,
-  pheromones:pheromones,
-  vants_render
-})
-.backbuffer( false )
-.compute( compute_shader, 1 )
-.render( render_shader )
-.onframe( ()=> s.buffers.vants_render.clear() )
-.run( 1, 100 )
+const sg = await seagulls.init()
+
+sg.buffers({
+    vants:vants,
+    pheromones:pheromones,
+    vants_render
+  })
+  .backbuffer( false )
+  .compute( compute_shader, 1 )
+  .render( render_shader )
+  .onframe( ()=> sg.buffers.vants_render.clear() )
+  .run( 1, 100 )
