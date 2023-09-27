@@ -73,16 +73,22 @@ operators like `++` and `+=` from working correctly... just use simple assignmen
 `sg.buffers( dictionary:Object )` A key / value list of buffers, where each buffer is
 a `Float32Array` filled with data to be passed to the GPU. These buffers can be read
 and written to inside of compute shaders; vertex and fragment shaders cna only read
-from them.
+from them.  
 
 `sg.onframe( callback:Function )` - Assigns an event handler that will be called on 
-for every frame of animation.
+for every frame of animation.  
 
-`render( shader:String )` - Pass a vertex / fragment shader to this function to create a render pipeline.
+`sg.clear( color:Array )` - the clear color determines the RGBA background of the graphics canvas,
+useful for simulations that use instance rendering to only fill part of the screen.   
 
-`compute( shader:String )` - Pass a compute shader to this function to create a compute pipeline.
+`sg.render( shader:String )` - Pass a vertex / fragment shader to this function to create a render pipeline.
 
-`run()` - Start the animation loop and the shader running.
+`sg.compute( shader:String, dispatchCount:Array )` - Pass a compute shader to this function to create a compute pipeline.
+The number of times the shader is run equals `dispatchCount * workgroupSize`; the workgroup size is specified in your
+compute shader.  
+
+`sg.run( instanceCount:Number )` - Start the animation loop and the shader running. The instance count determines
+the number of times a quad is rendered per frame, useful for agent-based and particle simulations.
 
 ## Inspiration / Resources
 - [gl-toy](http://stack.gl/packages/#stackgl/gl-toy) : A minimal shader setup library for WebGL / GLSL
