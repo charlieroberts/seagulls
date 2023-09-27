@@ -56,7 +56,7 @@ fn vantIndex( cell:vec3u ) -> u32 {
 
 fn pheromoneIndex( vant_pos: vec2f ) -> u32 {
   let width = ${W}.;
-  return u32( vant_pos.y * width + vant_pos.x );
+  return u32( abs( vant_pos.y % ${H}. ) * width + vant_pos.x );
 }
 
 @compute
@@ -73,10 +73,10 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   // if pheromones were found
   if( pheromone != 0. ) {
     vant.dir += .25; // turn 90 degrees counter-clockwise
-    vant.flag = 0.;  // set pheromone flag
+    pheremones[ pIndex ] = 0.;  // set pheromone flag
   }else{
     vant.dir -= .25; // turn clockwise
-    vant.flag = 1.;  // unset pheromone flag
+    pheremones[ pIndex ] = 1.;  // unset pheromone flag
   }
 
   // calculate direction based on vant heading
@@ -86,7 +86,10 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
 
   vants[ index ] = vant;
   
-  pheremones[ pIndex ] = vant.flag;
+  // we'll look at the render buffer in the fragment shader
+  // if we see a value of one a vant is there and we can color
+  // it accordingly. in our JavaScript we clear the buffer on every
+  // frame.
   render[ pIndex ] = 1.;
 }`
  
@@ -112,7 +115,5 @@ s.buffers({
 .backbuffer( false )
 .compute( compute_shader, 1 )
 .render( render_shader )
-.onframe( ()=> { 
-  s.device.queue.writeBuffer(s.__buffers.vants_render, 0, vants_render, 0, vants_render.length * mult );
-})
+.onframe( ()=> s.buffers.vants_render.clear() )
 .run( 1, 100 )
