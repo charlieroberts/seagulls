@@ -7,6 +7,8 @@ const WORKGROUP_SIZE = 4,
 const W = Math.round( window.innerWidth  / GRID_SIZE ),
       H = Math.round( window.innerHeight / GRID_SIZE )
 
+const mult = navigator.userAgent.indexOf('Chrome') === -1 ? 4 : 1
+
 const render_shader = seagulls.constants.vertex + `
 struct VertexInput {
   @location(0) pos: vec2f,
@@ -111,6 +113,6 @@ s.buffers({
 .compute( compute_shader, 1 )
 .render( render_shader )
 .onframe( ()=> { 
-  s.device.queue.writeBuffer(s.__buffers.vants_render, 0, vants_render, 0, vants_render.length * 4);
+  s.device.queue.writeBuffer(s.__buffers.vants_render, 0, vants_render, 0, vants_render.length * mult );
 })
 .run( 1, 100 )
