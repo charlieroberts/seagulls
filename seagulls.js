@@ -89,7 +89,7 @@ const seagulls = {
 
   createTexture( device, format, canvas ) {
     const tex = device.createTexture({
-      size: [canvas.width, canvas.height],
+      size: Array.isArray( canvas ) ? canvas : [canvas.width, canvas.height],
       format,
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     })
@@ -371,11 +371,11 @@ const seagulls = {
     })
 
     const bindGroupLayouts = [ bindGroupLayout ]
-    const hasTexture = Array.isArray( textures ) 
-      ? textures[0] !== null 
+    const hasExternalTexture = Array.isArray( textures ) 
+      ? textures[0] !== null && textures[0].__type === 'external' 
       : false
 
-    if( navigator.userAgent.indexOf('Firefox') === -1 && hasTexture ) {
+    if( navigator.userAgent.indexOf('Firefox') === -1 && hasExternalTexture ) {
       const externalEntry = {
         binding: 0,
         visibility: GPUShaderStage.FRAGMENT,
@@ -409,19 +409,6 @@ const seagulls = {
         targets: [{
           format: presentationFormat,
           blend: shouldBlend ? CONSTANTS.blend : undefined
-
-          /*blend:{
-            color: {
-              srcFactor: 'src-alpha',
-              dstFactor: 'one',
-              operation: 'add',
-            },
-            alpha: {
-              srcFactor: 'zero',
-              dstFactor: 'one',
-              operation: 'add',
-            }
-          }*/
         }]
       }
     });
@@ -543,7 +530,7 @@ const seagulls = {
     })
     
     let resource = null, 
-        shouldBind = navigator.userAgent.indexOf('Firefox') === -1 && textures !== null && textures[0] !== null 
+        shouldBind = navigator.userAgent.indexOf('Firefox') === -1 && textures !== null && textures[0] !== null && textures[0].__type === 'external' 
 
     
     let externalTextureBindGroup = null
@@ -695,6 +682,15 @@ const seagulls = {
             this.__buffers[k], 0, v, 0, v.length * mult 
           )
         }
+        this.__buffers[ k ].write = ( buffer, readStart=0, writeStart=0, length=-1 ) => {
+          this.device.queue.writeBuffer(
+            this.__buffers[k], 
+            readStart, 
+            buffer, 
+            writeStart, 
+            length === -1 ? buffer.length * mult : length
+          )
+        }
       })
       this.buffers = this.__buffers
       return this
@@ -725,16 +721,16 @@ const seagulls = {
       return this
     },
 
-    compute( shader, count=1, args ) {
-      let __uniforms = {}
+    __formatData( args ) {
+      let uniforms = {}
       if( args?.uniforms !== undefined ) {
         for( let u of args.uniforms ) {
-          __uniforms[ u ] = this.uniforms[ u ]
+          uniforms[ u ] = this.uniforms[ u ]
         }
       }else{
         if( typeof this.uniforms !== 'function' ) {
           for( let u of Object.getOwnPropertyNames( this.uniforms ) ) {
-            __uniforms[ u ] = this.uniforms[ u ]
+            uniforms[ u ] = this.uniforms[ u ]
           }
         }
       }
@@ -744,13 +740,48 @@ const seagulls = {
           this.__buffers[ key ].pingpong = true
         })
       } 
+      
+      let buffers = {}
+      if( args?.buffers !== undefined ) {
+        for( let u of args.buffers ) {
+          buffers[ u ] = this.__buffers[ u ]
+        }
+      }else{
+        buffers = this.__buffers        
+      }
+
+      let textures = {}
+      if( args?.textures !== undefined ) {
+        for( let u of args.textures ) {
+          textures[ u ] = this.__textures[ u ]
+        }
+      }else{
+        textures = this.__textures
+      }
+
+      if( textures !== null ) {
+        textures.forEach( t => {
+          if( t.nodeName === 'VIDEO' ) {
+            t.__type = 'external'
+          }else{
+            t.__type = 'internal'
+          }
+        })
+      }
+
+      return { buffers, textures, uniforms }
+    },
+
+    compute( shader, count=1, args ) {
+      const { buffers, textures, uniforms } = this.__formatData( args ) 
 
       const [ simPipeline, simBindGroups ] = seagulls.createSimulationStage( 
         this.device, 
         shader, 
-        Object.values( this.__buffers ), 
-        __uniforms,
-        this.shouldUseBackBuffer
+        Object.values( buffers ), 
+        uniforms,
+        this.shouldUseBackBuffer,
+        textures
       )
 
       if( args?.workgroupCount !== undefined ) {
@@ -764,6 +795,7 @@ const seagulls = {
       })
 
       Object.assign( this, { simPipeline, simBindGroups })
+     
       return this
     },
 
@@ -773,41 +805,21 @@ const seagulls = {
     },
 
     render( shader, args ) {
-      let __uniforms = {}
-      
-      // check to see if list of uniforms was passed
-      // if not assume all uniforms will be used
-      // in the fragment shader.
-      if( args?.uniforms !== undefined ) {
-        for( let u of args.uniforms ) {
-          __uniforms[ u ] = this.uniforms[ u ]
-        }
-      }else{
-        if( typeof this.uniforms !== 'function' ) {
-          for( let u of Object.getOwnPropertyNames( this.uniforms ) ) {
-            __uniforms[ u ] = this.uniforms[ u ]
-          }
-        }
-      }
-
-      if( Array.isArray( args?.pingpong ) ) {
-        args.pingpong.forEach( key => {
-          this.__buffers[ key ].pingpong = true
-        })
-      }
+      const { buffers, textures, uniforms } = this.__formatData( args )  
 
       const [ renderPipeline, renderBindGroups, quadBuffer ] = seagulls.createRenderStage( 
         this.device, 
         shader, 
-        this.__buffers !== undefined ? Object.values(this.__buffers) : null, 
+        buffers !== undefined ? Object.values(buffers) : null, 
         this.presentationFormat,
-        __uniforms,
-        this.__textures,
+        uniforms,
+        textures,
         this.shouldUseBackBuffer,
         this.__blend
       )
 
       Object.assign( this, { renderPipeline, renderBindGroups, quadBuffer })
+
       return this
     },
 
@@ -832,7 +844,7 @@ const seagulls = {
             encoder, 
             stage.simPipeline, 
             stage.simBindGroups, 
-            stage.times, //this.times, 
+            stage.times, 
             stage.workgroupCount, 
             stage.step
           )
