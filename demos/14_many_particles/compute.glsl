@@ -1,6 +1,6 @@
 struct Particle {
   pos: vec2f,
-  speed: f32
+  vel: vec2f
 };
 
 @group(0) @binding(0) var<uniform> frame: f32;
@@ -18,7 +18,7 @@ fn cellindex( cell:vec3u ) -> u32 {
 fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   let i = cellindex( cell );
   let p = state[ i ];
-  var next = p.pos.x + (2. / res.x) * p.speed;
-  if( next >= 1. ) { next -= 2.; }
-  state[i].pos.x = next;
+  var next = p.pos + (2. / res) * p.vel;
+  if( next.x >= 1. ) { next.x -= 2.; }
+  state[i].pos = next;
 }
