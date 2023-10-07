@@ -202,14 +202,16 @@ const seagulls = {
       textures.forEach( tex => {
         entries.push({
           binding:count++,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           sampler: {}
         })
-        //entries.push({
-        //  binding:count++,
-        //  visibility: GPUShaderStage.FRAGMENT,
-        //  externalTexture: {}
-        //})
+        if( tex.__type === 'internal' ) {
+          entries.push({
+            binding:count++,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: {}
+          })
+        }
       })
     }
 
@@ -296,13 +298,15 @@ const seagulls = {
           binding: count++,
           resource: sampler
         }
-        //const textureuni = {
-        //  binding: count++,
-        //  resource: device.importExternalTexture({ source:tex.src })
-        //}
+        const textureuni = {
+          binding: count++,
+          resource: tex.createView()
+        }
 
         entriesA.push( sampleruni )
         entriesB.push( sampleruni )
+        entriesA.push( textureuni )
+        entriesB.push( textureuni )
       })
     }
 
@@ -702,11 +706,18 @@ const seagulls = {
     },
 
     textures( _textures ) {
-      this.__textures = _textures/*textures.map( tex => {
-        const t = seagulls.createTexture( this.device, this.presentationFormat, this.canvas )
-        t.src = tex
-        return t
-      })*/
+      this.__textures = _textures.map( tex => {
+        const texture = seagulls.createTexture( this.device, this.presentationFormat, [this.width, this.height])
+        texture.src = tex
+        this.device.queue.writeTexture(
+          { texture }, 
+          tex,
+          { bytesPerRow: 4 * this.width, rowsPerImage: this.height }, 
+          {width:this.width, height:this.height}
+        )
+
+        return texture
+      })
 
       return this
     },
