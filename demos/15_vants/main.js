@@ -1,8 +1,9 @@
 import { default as seagulls } from '../../seagulls.js'
 
-const WORKGROUP_SIZE = 4,
-      GRID_SIZE = 16,
-      NUM_AGENTS = 16
+const WORKGROUP_SIZE = 8,
+      DISPATCH_COUNT = [2,1,1],
+      GRID_SIZE = 2,
+      NUM_AGENTS = 128
 
 const W = Math.round( window.innerWidth  / GRID_SIZE ),
       H = Math.round( window.innerHeight / GRID_SIZE )
@@ -70,15 +71,15 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
 
   // if pheromones were found
   if( pheromone != 0. ) {
-    vant.dir += .25; // turn 90 degrees counter-clockwise
+    vant.dir += select(.25,-.25,vant.flag==0.); // turn 90 degrees counter-clockwise
     pheremones[ pIndex ] = 0.;  // set pheromone flag
   }else{
-    vant.dir -= .25; // turn clockwise
+    vant.dir += select(-.25,.25,vant.flag==0.); // turn 90 degrees counter-clockwise
     pheremones[ pIndex ] = 1.;  // unset pheromone flag
   }
 
   // calculate direction based on vant heading
-  let dir = vec2f( cos( vant.dir * pi2 ), sin( vant.dir * pi2 ) );
+  let dir = vec2f( sin( vant.dir * pi2 ), cos( vant.dir * pi2 ) );
   
   vant.pos = round( vant.pos + dir ); 
 
@@ -97,21 +98,21 @@ const vants_render = new Float32Array( W*H ) // hold info to help draw vants
 const vants        = new Float32Array( NUM_AGENTS * NUM_PROPERTIES ) // hold vant info
 
 for( let i = 0; i < NUM_AGENTS * NUM_PROPERTIES; i+= NUM_PROPERTIES ) {
-  vants[ i ]   = Math.floor( Math.random() * W )
-  vants[ i+1 ] = Math.floor( Math.random() * H )
-  vants[ i+2 ] = 0 // this is used to hold direction
-  vants[ i+3 ] = 0 // this could be used to hold vant "type"
+  vants[ i ]   = Math.floor( (.45+Math.random()/10) * W ) // x
+  vants[ i+1 ] = Math.floor( (.45+Math.random()/10) * H ) // y
+  vants[ i+2 ] = 0 // direction 
+  vants[ i+3 ] = Math.round( Math.random()  ) // vant behavior type 
 }
 
 const sg = await seagulls.init()
 
 sg.buffers({
-    vants:vants,
-    pheromones:pheromones,
+    vants,
+    pheromones,
     vants_render
   })
   .backbuffer( false )
-  .compute( compute_shader, 1 )
+  .compute( compute_shader, DISPATCH_COUNT )
   .render( render_shader )
   .onframe( ()=> sg.buffers.vants_render.clear() )
-  .run( 1, 100 )
+  .run(1)
