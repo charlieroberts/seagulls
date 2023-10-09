@@ -7,10 +7,17 @@ const sg     = await seagulls.init(),
 
 Mouse.init()
 
-const resolution = [ window.innerWidth, window.innerHeight ]
+const mouse_u = sg.uniform( [0,0,0] )
 
-sg
-  .uniforms({ resolution, mouse:[0,0,0] })
-  .onframe( ()=> sg.uniforms.mouse = Mouse.values )
-  .render( shader )
-  .run()
+const render = sg.render({
+  shader,
+  data: [ 
+    sg.uniform( [ window.innerWidth, window.innerHeight ] ), 
+    mouse_u, 
+    sg.sampler(), 
+    sg.feedback() 
+  ],
+  onframe() { mouse_u.value = Mouse.values }
+})
+
+sg.run( render )

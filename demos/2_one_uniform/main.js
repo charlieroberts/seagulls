@@ -4,10 +4,12 @@ const sg     = await seagulls.init(),
       frag   = await seagulls.import( './frag.wgsl' ),
       shader = seagulls.constants.vertex + frag
 
-let frame = 0
+const frame = sg.uniform(0)
 
-sg
-  .uniforms({ frame })
-  .onframe( ()=> sg.uniforms.frame = frame++ ) 
-  .render( shader )
-  .run()
+const render = sg.render({
+  shader,
+  data: [ frame ],
+  onframe() { frame.value++ }
+})
+
+sg.run( render )

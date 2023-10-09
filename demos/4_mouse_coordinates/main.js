@@ -1,5 +1,5 @@
 import { default as seagulls } from '../../seagulls.js'
-import { default as Mouse } from '../../helpers/mouse.js'
+import { default as Mouse    } from '../../helpers/mouse.js'
 
 const sg     = await seagulls.init(),
       frag   = await seagulls.import( './frag.wgsl' ),
@@ -7,8 +7,12 @@ const sg     = await seagulls.init(),
 
 Mouse.init()
 
-sg
-  .uniforms({ mouse:Mouse.values })
-  .onframe( ()=> sg.uniforms.mouse = Mouse.values )
-  .render( shader )
-  .run()
+const mouse = sg.uniform( Mouse.values )
+
+const render = sg.render({
+  shader,
+  data: [ mouse ],
+  onframe() { mouse.value = Mouse.values }
+})
+
+sg.run( render )

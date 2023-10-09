@@ -7,8 +7,12 @@ const sg     = await seagulls.init(),
 
 document.body.onclick = e => Audio.start()
 
-sg
-  .uniforms({ audio:[0,0,0] })
-  .onframe( ()=> sg.uniforms.audio = [Audio.low, Audio.mid, Audio.high] )
-  .render( shader )
-  .run()
+const fft = sg.uniform( [0,0,0] )
+
+const render = sg.render({
+  shader,
+  data: [ fft ],
+  onframe() { fft.value = [Audio.low, Audio.mid, Audio.high] }
+})
+
+sg.run( render )

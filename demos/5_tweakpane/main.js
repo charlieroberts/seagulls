@@ -8,15 +8,16 @@ const sg     = await seagulls.init(),
 const params = { background: { r:0, g:0, b:0  } }
 const pane   = new Pane()
 
-pane
-  .addBinding( params, 'background', { color: { type:'float' } })
-  .on( 'change',  e => {
-    sg.uniforms.color = Object.values( e.value )
-  })
+pane.addBinding( params, 'background', { color: { type:'float' } })
 
 // Object.values() creates an array out all the values
 // in a javascript dictionary and ignores the keys
-sg
-  .uniforms({ color:Object.values( params.background ) })
-  .render( shader )
-  .run()
+const color = sg.uniform( Object.values( params.background ) )
+
+const render = sg.render({
+  shader,
+  data: [ color ],
+  onframe() { color.value = Object.values( params.background ) } 
+})
+
+sg.run( render )

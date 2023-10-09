@@ -11,11 +11,21 @@ for( let i = 0; i < size; i++ ) {
   state[ i ] = Math.random()
 }
 
-const workgroup_size = Math.ceil( size / 64 )  
+const dispatch_size = Math.ceil( size / 64 )  
+const statebuffer   = sg.buffer( state )
 
-sg.buffers({ state })
-  .uniforms({ resolution:[ window.innerWidth, window.innerHeight ] })
-  .backbuffer( false )
-  .compute( compute, [workgroup_size, 1, 1] )
-  .render( render )
-  .run()
+const renderPass = sg.render({
+  shader: render,
+  data: [
+    sg.uniform([ window.innerWidth, window.innerHeight ]),
+    statebuffer
+  ]
+})
+
+const computePass = sg.compute({
+  shader: compute,
+  data: [ statebuffer ],
+  dispatchCount: [dispatch_size,1,1]
+})
+
+sg.run( computePass, renderPass )
