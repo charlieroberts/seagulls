@@ -642,10 +642,8 @@ const seagulls = {
     },
 
     feedback() {
-      const texture = seagulls.createTexture( this.device, this.presentationFormat, this.canvas )
       const feedback = { 
-        type:'feedback',
-        texture
+        type:'feedback'
       }
 
       return feedback
