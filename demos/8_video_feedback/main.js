@@ -7,10 +7,14 @@ const sg     = await seagulls.init(),
 
 await Video.init()
 
-const resolution = [ window.innerWidth, window.innerHeight ]
+const render = sg.render({
+  shader,
+  data:[
+    sg.uniform([ sg.width, sg.height ]),
+    sg.sampler(),
+    sg.feedback(),
+    sg.video( Video.element )
+  ]
+})
 
-sg
-  .uniforms({ resolution })
-  .textures([ Video.element ])
-  .render( shader )
-  .run()
+sg.run( render )

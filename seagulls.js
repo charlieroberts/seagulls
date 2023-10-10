@@ -220,6 +220,8 @@ const seagulls = {
 
     if( data !== null ) {
       for( let d of data ) {
+        if( d.type === 'video' ) continue
+
         if( d.type === 'pingpong' ) {
           entries.push( seagulls.createRenderLayoutEntry( d.a, count++, type ) )
           entries.push( seagulls.createRenderLayoutEntry( d.b, count++, type, 'storage' ) )
@@ -289,6 +291,7 @@ const seagulls = {
 
     if( data !== null ) {
       for( let d of data ) {
+        if( d.type === 'video' ) continue
         if( d.type !== 'pingpong' ) {
           const entry = seagulls.createRenderBindGroupEntry( d, count++ )
           entriesA.push( entry )
@@ -330,16 +333,15 @@ const seagulls = {
     return bindGroups
   },
 
-  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout, textures, shouldBlend=false ) {
+  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout, data, shouldBlend=false ) {
     const module = device.createShaderModule({
       label: 'main render',
       code
     })
 
     const bindGroupLayouts = [ bindGroupLayout ]
-    const hasExternalTexture = Array.isArray( textures ) && textures.length > 0 
-      ? textures[0] !== null && textures[0].__type === 'external' 
-      : false
+    const videos = data.filter( d => d.type === 'video' )
+    const hasExternalTexture = videos.length > 0 
 
     if( navigator.userAgent.indexOf('Firefox') === -1 && hasExternalTexture ) {
       const externalEntry = {
@@ -409,7 +411,7 @@ const seagulls = {
       presentationFormat, 
       vertexBufferLayout, 
       renderLayout, 
-      textures, 
+      data, 
       blend 
     )
 
@@ -471,16 +473,17 @@ const seagulls = {
       }]
     })
     
-    let resource = null, 
-        shouldBind = navigator.userAgent.indexOf('Firefox') === -1 && passDesc.textures !== null && passDesc.textures[0] !== null && passDesc.textures[0].__type === 'external' 
+    let resource = null,
+        videos   = passDesc.data.filter( d => d.type === 'video' ),
+        useVideo = navigator.userAgent.indexOf('Firefox') === -1 && videos.length > 0
 
     
     let externalTextureBindGroup = null
 
-    if( shouldBind )  {
+    if( useVideo )  {
       try {
         resource = passDesc.device.importExternalTexture({
-          source:passDesc.textures[0]
+          source:videos[0].src//passDesc.textures[0]
         })
 
         externalTextureBindGroup = passDesc.device.createBindGroup({
@@ -514,7 +517,7 @@ const seagulls = {
 
     pass.setBindGroup( 0, passDesc.renderBindGroups[ bindGroupIndex ] )
 
-    if( shouldBind ) { 
+    if( useVideo ) { 
       pass.setBindGroup( 1, externalTextureBindGroup ) 
     }
     
@@ -651,6 +654,10 @@ const seagulls = {
       }
 
       return feedback
+    },
+
+    video( src ) {
+      return { type:'video', src }
     },
 
     pingpong( a,b ) {
