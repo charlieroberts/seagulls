@@ -19,12 +19,33 @@ for( let i = 0; i < NUM_PARTICLES * NUM_PROPERTIES; i+= NUM_PROPERTIES ) {
   state[ i + 2 ] = Math.random() * 10
 }
 
-sg.buffers({ state })
-  .backbuffer( false )
-  .blend( true )
-  .uniforms({ frame, res:[sg.width, sg.height ] })
-  .compute( compute_shader, NUM_PARTICLES / (WORKGROUP_SIZE*WORKGROUP_SIZE) )
-  .render( render_shader )
-  .onframe( ()=>  sg.uniforms.frame = frame++  )
-  .run( NUM_PARTICLES )
+const state_b = sg.buffer( state ),
+      frame_u = sg.uniform( 0 ),
+      res_u   = sg.uniform([ sg.width, sg.height ]) 
 
+const render = sg.render({
+  shader: render_shader,
+  data: [
+    frame_u,
+    res_u,
+    state_b
+  ],
+  onframe() { frame_u.value++ },
+  count: NUM_PARTICLES,
+  blend: true
+})
+
+
+const dc = Math.ceil( NUM_PARTICLES / 64 )
+
+const compute = sg.compute({
+  shader: compute_shader,
+  data:[
+    res_u,
+    state_b
+  ],
+  dispatchCount: [ dc, dc, 1 ] 
+
+})
+
+sg.run( compute, render )

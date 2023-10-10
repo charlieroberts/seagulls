@@ -201,6 +201,7 @@ const seagulls = {
         // make sure we don't specify buffers as read/write for fragment
         // and vertex shaders
         const __type = type === 'render' ? 'read-only-storage' : readwrite 
+        
         entry = {
           visibility,
           binding: count,
@@ -220,11 +221,13 @@ const seagulls = {
     if( data !== null ) {
       for( let d of data ) {
         if( d.type === 'pingpong' ) {
-          console.log( 'pingpong', type )
           entries.push( seagulls.createRenderLayoutEntry( d.a, count++, type ) )
           entries.push( seagulls.createRenderLayoutEntry( d.b, count++, type, 'storage' ) )
         }else{
-          entries.push( seagulls.createRenderLayoutEntry( d, count++, type ) )
+          // TODO is it safe to assume that a buffer not included in a pingpong will always
+          // be read/write as part of a compute shader?
+          const mode = type === 'compute' ? 'storage' : 'read-only-storage'
+          entries.push( seagulls.createRenderLayoutEntry( d, count++, type, mode ) )
         }
       }
     }
@@ -514,6 +517,7 @@ const seagulls = {
     if( shouldBind ) { 
       pass.setBindGroup( 1, externalTextureBindGroup ) 
     }
+    
     pass.draw(6, passDesc.count )  
     pass.end()
 
@@ -649,11 +653,10 @@ const seagulls = {
       return feedback
     },
 
-    uniforms( _uniforms ) {
-      this.uniforms = seagulls.createUniformsManager( this.device, _uniforms )
-      return this
+    pingpong( a,b ) {
+      return { type:'pingpong', a, b }
     },
-
+    
     textures( _textures ) {
       this.__textures = _textures.map( tex => {
         const texture = seagulls.createTexture( this.device, this.presentationFormat, [this.width, this.height])
@@ -668,16 +671,6 @@ const seagulls = {
         return texture
       })
 
-      return this
-    },
-
-    backbuffer( use=true ) {
-      this.shouldUseBackBuffer = use
-      return this
-    },
-
-    clear( clearColor ) {
-      this.clearColor = clearColor 
       return this
     },
 
@@ -713,9 +706,6 @@ const seagulls = {
       return pass 
     },
 
-    pingpong( a,b ) {
-      return { type:'pingpong', a, b }
-    },
 
     render( args ) {
       const pass = {
@@ -728,11 +718,11 @@ const seagulls = {
         canvas: this.canvas,
         context: this.context,
         data:null,
-        shader:null
+        shader:null,
+        count:1
       }
 
       Object.assign( pass, args )
-
       
       const [renderPipeline, renderBindGroups, vertexBuffer] = seagulls.createRenderStage(
         this.device,
@@ -751,16 +741,6 @@ const seagulls = {
       }
       
       return pass
-    },
-
-    onframe( fnc ) {
-      this.__onframe = fnc 
-      return this
-    },
-
-    blend( shouldBlend=false ) {
-      this.__blend = shouldBlend
-      return this
     },
 
     run( ...passes ) {
