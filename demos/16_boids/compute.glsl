@@ -44,30 +44,26 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
 
   // apply effects of rule 1
   center /= f32( count - 1u );
-  boid.vel += (center-boid.pos) * .05;
+  boid.vel += (center-boid.pos) * .25;
 
   // apply effects of rule 2
-  boid.vel += keepaway;
+  boid.vel += keepaway * .5 ;
 
   // apply effects of rule 3
   vel /= f32( count - 1u );
-  boid.vel += vel * .01;
+  boid.vel += vel * .025;
 
   // limit speed
-  if( length( boid.vel ) > 5. ) {
-    boid.vel = (boid.vel / length(boid.vel)) * 5.;
-  } 
+  //if( length( boid.vel ) > 5. ) {
+    boid.vel = select( boid.vel, (boid.vel / length(boid.vel)) * 10., length(boid.vel ) > 10. );
+  //} 
   
   // calculate next position
   boid.pos = boid.pos + (2. / res) * boid.vel;
 
   // boundaries
-  if( abs( boid.pos.y ) >= 1. ) { 
-    boid.vel.y *= -1.; 
-  }
-  if( abs( boid.pos.x ) > 1. ) {
-    boid.vel.x *= -1.;
-  }
+  boid.pos.y = select( boid.pos.y, ((boid.pos.y + 1.) % 2.) - sign(boid.pos.y), abs(boid.pos.y) > 1.);
+  boid.pos.x = select( boid.pos.x, ((boid.pos.x + 1.) % 2.) - sign(boid.pos.x), abs(boid.pos.x) > 1.);
 
   state[ idx ] = boid;
 }
