@@ -1,9 +1,9 @@
 import { default as seagulls } from '../../seagulls.js'
 
 const WORKGROUP_SIZE = 8,
-      DISPATCH_COUNT = [2,1,1],
-      GRID_SIZE = 2,
-      NUM_AGENTS = 128
+      NUM_AGENTS = 128,
+      DISPATCH_COUNT = [NUM_AGENTS/2,1,1],
+      GRID_SIZE = 2
 
 const W = Math.round( window.innerWidth  / GRID_SIZE ),
       H = Math.round( window.innerHeight / GRID_SIZE )
@@ -14,15 +14,8 @@ struct VertexInput {
   @builtin(instance_index) instance: u32,
 }
 
-struct Vant {
-  pos: vec2f,
-  dir: f32,
-  flag: f32
-}
-
-@group(0) @binding(0) var<storage> vants: array<Vant>;
-@group(0) @binding(1) var<storage> pheromones: array<f32>;
-@group(0) @binding(2) var<storage> render: array<f32>;
+@group(0) @binding(0) var<storage> pheromones: array<f32>;
+@group(0) @binding(1) var<storage> render: array<f32>;
 
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
@@ -105,14 +98,27 @@ for( let i = 0; i < NUM_AGENTS * NUM_PROPERTIES; i+= NUM_PROPERTIES ) {
 }
 
 const sg = await seagulls.init()
+const pheromones_b = sg.buffer( pheromones )
+const vants_b  = sg.buffer( vants )
+const render_b = sg.buffer( vants_render )
 
-sg.buffers({
-    vants,
-    pheromones,
-    vants_render
-  })
-  .backbuffer( false )
-  .compute( compute_shader, DISPATCH_COUNT )
-  .render( render_shader )
-  .onframe( ()=> sg.buffers.vants_render.clear() )
-  .run(1)
+const render = sg.render({
+  shader: render_shader,
+  data:[
+    pheromones_b,
+    render_b
+  ],
+  dispatchCount:DISPATCH_COUNT
+})
+
+const compute = sg.compute({
+  shader: compute_shader,
+  data:[
+    vants_b,
+    pheromones_b,
+    render_b
+  ],
+  onframe() { render_b.clear() }
+})
+
+sg.run( compute, render )
