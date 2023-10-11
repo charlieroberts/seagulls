@@ -14,6 +14,7 @@ for( let i = 0; i < size; i++ ) {
 const statebuffer1 = sg.buffer( state )
 const statebuffer2 = sg.buffer( state )
 const res = sg.uniform([ window.innerWidth, window.innerHeight ])
+
 const renderPass = sg.render({
   shader: render,
   data: [
@@ -22,27 +23,10 @@ const renderPass = sg.render({
   ]
 })
 
-
 const computePass = sg.compute({
   shader: compute,
   data: [ res, sg.pingpong( statebuffer1, statebuffer2 ) ],
   dispatchCount:  [Math.round(seagulls.width / 8), Math.round(seagulls.height/8), 1],
 })
 
-
 sg.run( computePass, renderPass )
-
-/*
-
-sg.buffers({ stateA:state, stateB:state })
-  .uniforms({ resolution:[ window.innerWidth, window.innerHeight ] })
-  .backbuffer( false )
-  .pingpong( 1 )
-  .compute( 
-    compute, 
-    [Math.round(window.innerWidth / 8), Math.round(window.innerHeight/8), 1], 
-    { pingpong:['stateA'] } 
-  )
-  .render( render )
-  .run()
-  */
