@@ -389,7 +389,7 @@ const seagulls = {
           data   = props.data,
           blend  = props.blend
 
-    const vertices = props.vertices === undefined ? CONSTANTS.quadVertices : props.vertices
+    const vertices = props.vertices
     const [vertexBuffer, vertexBufferLayout] = seagulls.createVertexBuffer2D( device, vertices )
 
     const renderLayout = seagulls.createBindGroupLayout( device, props.data )
@@ -521,7 +521,8 @@ const seagulls = {
       pass.setBindGroup( 1, externalTextureBindGroup ) 
     }
     
-    pass.draw(6, passDesc.count )  
+    // TODO: generalize to 3d
+    pass.draw(passDesc.vertices.length/2, passDesc.count )  
     pass.end()
 
     if( shouldCopy ) {
@@ -731,7 +732,9 @@ const seagulls = {
       }
 
       Object.assign( pass, args )
-      
+     
+      if( pass.vertices === undefined ) pass.vertices = CONSTANTS.quadVertices 
+
       const [renderPipeline, renderBindGroups, vertexBuffer] = seagulls.createRenderStage(
         this.device,
         pass,
