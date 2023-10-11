@@ -569,25 +569,26 @@ const seagulls = {
   proto: {
     buffer( v, label='', type='float' ) {
       const usage = v.usage !== undefined ? v.usage : CONSTANTS.defaultStorageFlags
-      const buffer = seagulls.createStorageBuffer( this.device, v, label, usage )
+      const __buffer = seagulls.createStorageBuffer( this.device, v, label, usage )
 
+      const buffer = { type:'buffer', buffer:__buffer }
       buffer.clear = ()=> {
         v.fill(0)
         this.device.queue.writeBuffer(
-          buffer, 0, v, 0, v.length * mult 
+          __buffer, 0, v, 0, v.length * mult 
         )
       }
       buffer.write = ( buffer, readStart=0, writeStart=0, length=-1 ) => {
         this.device.queue.writeBuffer(
-          buffer, 
+          __buffer, 
           readStart, 
-          buffer, 
+          __buffer, 
           writeStart, 
-          length === -1 ? buffer.length * mult : length
+          length === -1 ? __buffer.length * mult : length
         )
       }
 
-      return { type:'buffer', buffer }
+      return buffer
     },
 
     uniform( __value, type='float' ) {
