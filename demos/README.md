@@ -11,6 +11,11 @@
 9. [*Simplest Compute*](https://charlieroberts.github.io/seagulls/demos/9_simplest_compute) - Using a compute shader to incremeent a single number, which in turn is used to determine the color of all pixels in a fragment shader.
 10. [*Compute with position*](https://charlieroberts.github.io/seagulls/demos/10_compute_with_position) - Performing compute shader computations for every pixel on the screen.
 11. [*Conway's Game of Life*](https://charlieroberts.github.io/seagulls/demos/11_game_of_life) - A classic artificial life simulation, GPU accelerated.
+12. [*Reaction Diffusion*](https://charlieroberts.github.io/seagulls/demos/12_reaction_diffusion) - Turing's morphogenesis algorithm.
+13. [*Particle*](https://charlieroberts.github.io/seagulls/demos/13_particle) - A single instanced particle drawn with a vertex shader.
+14. [*Particle*](https://charlieroberts.github.io/seagulls/demos/14_many_particles) - Many particles driven by compute+ vertex shaders. 
+15. [*Langton's Vants*](https://charlieroberts.github.io/seagulls/demos/15_vants) - Langton's virtual ants simulation. 
+16. [*Boids*](https://charlieroberts.github.io/seagulls/demos/16_boids) - The Craig Reynolds flocking simulation. 
 
 The demos in this directory are presented in a few different ways:
 
