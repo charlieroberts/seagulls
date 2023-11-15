@@ -34,7 +34,7 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
     center += _boid.pos;
     
     // rule 2
-    if( length( _boid.pos - boid.pos ) < .005 ) {
+    if( length( _boid.pos - boid.pos ) < .05 ) {
       keepaway = keepaway - ( _boid.pos - boid.pos );
     }
     
@@ -53,10 +53,14 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   vel /= f32( count - 1u );
   boid.vel += vel * .025;
 
+  // right should optimize this
+  if( boid.pos.x < -.9 ) { boid.vel.x -= (boid.pos.x - -.9) * 10.; }
+  if( boid.pos.x > .9 ) { boid.vel.x -= (boid.pos.x - .9) * 10.; }
+  if( boid.pos.y < -.9 ) { boid.vel.y -= (boid.pos.y - -.9) * 10.; }
+  if( boid.pos.y > .9 ) { boid.vel.y -= (boid.pos.y - .9) * 10.; }
+
   // limit speed
-  //if( length( boid.vel ) > 5. ) {
-    boid.vel = select( boid.vel, (boid.vel / length(boid.vel)) * 10., length(boid.vel ) > 10. );
-  //} 
+  boid.vel = select( boid.vel, (boid.vel / length(boid.vel)) * 10., length(boid.vel ) > 10. );
   
   // calculate next position
   boid.pos = boid.pos + (2. / res) * boid.vel;
