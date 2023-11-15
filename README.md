@@ -21,14 +21,16 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
 }`
 
 const sg         = await seagulls.init()
-const resolution = [ window.innerWidth, window.innerHeight ]
-let frame = 0
+const frame      = sg.uniform( 0 )
+const resolution = sg.uniform([ window.innerWidth, window.innerHeight ])
 
-sg
-  .uniforms({ frame, resolution })
-  .onframe( ()=> sg.uniforms.frame = frame++ ) 
-  .render( shader )
-  .run()
+const render = sg.render({
+  shader,
+  data: [ frame, resolution ],
+  onframe() { frame.value++ },
+})
+
+sg.run( render )
 ```
 
 ## Use
@@ -44,51 +46,11 @@ README).
 One tricky aspect is the uniform and texture binding. In your shaders, each
 uniform / storage buffer / sampler / texture is given a unique index, and 
 it's important that you use the same indices in your shader that seagulls
-uses on the CPU. Seagulls places all the uniforms first starting at index 
-0 in the order you define them when you call `sg.uniforms()`,
-then places storage buffers (if needed), and finally places textures (if
-needed). Textures and their associated samplers will alternate (TODO more
-info on this after appropriate examples are added).
+uses on the CPU. Seagulls uses the order of the `data` array to determine binding
+indices.
 
 Most demos include both a minimal version and a "verbose" version that is
 heavily explained / commented.
-
-## Reference
-For this reference, `seagulls` refers to the main module that you import,
-while `sg` refers to an instance create by a call to `seagulls.init()`. 
-See the various demos in the `/demos` folder for more examples of how to use
-the library.
-
-`seagulls.init()` - An async method that creates a new seagulls instance.
-
-`sg.uniforms( dictionary:Object )` - This function creates a manager for uniforms
-(data shared between the CPU and GPU). Pass in key/value pairs to create 
-uniforms and assign them their initial values. Once this function has been
-called, you can then change the value of a uniform through member variables
-that are created on the function itself. So, after calling `sg.uniforms({ frame:0 })`
-you can then update the `frame` uniform on the GPU by calling `sg.uniforms.frame = 20`. 
-Note that there is currently a bunch of meta-programming to make this work that stops
-operators like `++` and `+=` from working correctly... just use simple assignment.
-
-`sg.buffers( dictionary:Object )` A key / value list of buffers, where each buffer is
-a `Float32Array` filled with data to be passed to the GPU. These buffers can be read
-and written to inside of compute shaders; vertex and fragment shaders cna only read
-from them.  
-
-`sg.onframe( callback:Function )` - Assigns an event handler that will be called on 
-for every frame of animation.  
-
-`sg.clear( color:Array )` - the clear color determines the RGBA background of the graphics canvas,
-useful for simulations that use instance rendering to only fill part of the screen.   
-
-`sg.render( shader:String )` - Pass a vertex / fragment shader to this function to create a render pipeline.
-
-`sg.compute( shader:String, dispatchCount:Array )` - Pass a compute shader to this function to create a compute pipeline.
-The number of times the shader is run equals `dispatchCount * workgroupSize`; the workgroup size is specified in your
-compute shader.  
-
-`sg.run( instanceCount:Number )` - Start the animation loop and the shader running. The instance count determines
-the number of times a quad is rendered per frame, useful for agent-based and particle simulations.
 
 ## Inspiration / Resources
 - [gl-toy](http://stack.gl/packages/#stackgl/gl-toy) : A minimal shader setup library for WebGL / GLSL
