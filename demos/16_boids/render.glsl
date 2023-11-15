@@ -32,5 +32,5 @@ fn vs( input: VertexInput ) ->  @builtin(position) vec4f {
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {;
   let blue = 0.;
-  return vec4f( pos.x / res.x, pos.y / res.y, blue , .25 );
+  return vec4f(1.,1.,1.,.5);//vec4f( pos.x / res.x, pos.y / res.y, blue , .25 );
 }

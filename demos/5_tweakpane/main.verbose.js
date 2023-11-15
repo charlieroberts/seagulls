@@ -35,6 +35,9 @@ const params = { color:{ r:0, g:0, b:0 } }
 // of 0-255 (which is the default for html / css)
 const binding = pane.addBinding( params, 'color', { color: { type:'float' } } )
 
+// create a uniform holding our three color components (RGB)
+const color = sg.uniform( Object.values( params.color ) )
+
 // register an event for whenever tweakpane
 // changes a value
 binding.on( 'change', evt => {
@@ -43,10 +46,13 @@ binding.on( 'change', evt => {
   // ignoring the keys. So, Object.values({ r:0, g:1, b:2 })
   // becomes [0,1,2], which is what we need to update a vec3f
   // on the gpu.
-  sg.uniforms.color = Object.values( evt.value )
+  color.value = Object.values( evt.value )
 })
 
-sg
-  .uniforms({ color: Object.values( params.color ) })
-  .render( shader )
-  .run()
+
+const render = sg.render({
+  shader,
+  data: [ color ]
+})
+
+sg.run( render )

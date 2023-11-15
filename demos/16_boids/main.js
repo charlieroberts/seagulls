@@ -19,7 +19,7 @@ for( let i = 0; i < NUM_PARTICLES * NUM_PROPERTIES; i+= NUM_PROPERTIES ) {
 }
 
 const vertices  = new Float32Array([
-  0,1,
+  0,1,!
   -.5,-1.,
   .5,-1.
 ])

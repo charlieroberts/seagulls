@@ -15,12 +15,12 @@ const CONSTANTS = {
   blend:{
     color: {
       srcFactor: 'src-alpha',
-      dstFactor: 'one',
+      dstFactor: 'one-minus-src-alpha',
       operation: 'add',
     },
     alpha: {
-      srcFactor: 'zero',
-      dstFactor: 'one',
+      srcFactor: 'one',
+      dstFactor: 'one-minus-src-alpha',
       operation: 'add',
     }
   },
@@ -30,7 +30,7 @@ fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
   return vec4f( input, 0., 1.); 
 }
 
-`
+`, textureFormat:'rgba8unorm'
 }
 
 // to "fix" inconsistencies with device.writeBuffer
@@ -87,11 +87,12 @@ const seagulls = {
     return txt
   },
 
-  createTexture( device, format, canvas ) {
+  createTexture( device, format, canvas, usage=null ) {
+    console.log( 'texture:', usage )
     const tex = device.createTexture({
       size: Array.isArray( canvas ) ? canvas : [canvas.width, canvas.height],
       format,
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+      usage: usage===null ? GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST : usage
     })
 
     return tex
@@ -169,8 +170,10 @@ const seagulls = {
     return p
   },
 
-  createRenderLayoutEntry( data, count=0, type='render', readwrite='read-only-storage' ) {
+  createLayoutEntry( data, count=0, type='render', readwrite='read-only-storage' ) {
     let entry
+    // XXX this needs to be fixed for vertex-based simulations
+    // comment out | GPUShaderStage.VERTEX for readwrite in compute
     const visibility = type === 'render'
       ? GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX 
       : GPUShaderStage.COMPUTE
@@ -188,6 +191,15 @@ const seagulls = {
           binding:    count,
           visibility,
           texture:    {}
+        }
+        break
+      case 'storageTexture':
+        entry = {
+          binding: count,
+          visibility,
+          storageTexture:{
+            format:CONSTANTS.textureFormat
+          }
         }
         break
       case 'sampler':
@@ -223,13 +235,14 @@ const seagulls = {
         if( d.type === 'video' ) continue
 
         if( d.type === 'pingpong' ) {
-          entries.push( seagulls.createRenderLayoutEntry( d.a, count++, type ) )
-          entries.push( seagulls.createRenderLayoutEntry( d.b, count++, type, 'storage' ) )
+          if( d.b.type === 'texture' ) d.b.type = 'storageTexture'
+          entries.push( seagulls.createLayoutEntry( d.a, count++, type ) )
+          entries.push( seagulls.createLayoutEntry( d.b, count++, type, 'storage' ) )
         }else{
           // TODO is it safe to assume that a buffer not included in a pingpong will always
           // be read/write as part of a compute shader?
           const mode = type === 'compute' ? 'storage' : 'read-only-storage'
-          entries.push( seagulls.createRenderLayoutEntry( d, count++, type, mode ) )
+          entries.push( seagulls.createLayoutEntry( d, count++, type, mode ) )
         }
       }
     }
@@ -251,12 +264,18 @@ const seagulls = {
           resource: { buffer: data },
         }
         break
-      case 'texture':
+      case 'texture': case 'storageTexture':
         entry = {
           binding:  count,
-          resource: data.texture.createView() 
+          resource: data.createView() 
         }
         break
+      case 'storageTexture':
+        entry = {
+          binding:  count,
+          resource: data.createView({ format:CONSTANTS.textureFormat }) 
+        }
+        break;
       case 'feedback':
         entry = {
           binding:  count,
@@ -340,8 +359,8 @@ const seagulls = {
     })
 
     const bindGroupLayouts = [ bindGroupLayout ]
-    const videos = data.filter( d => d.type === 'video' )
-    const hasExternalTexture = videos.length > 0 
+    const videos = data !== null ? data.filter( d => d.type === 'video' ) : null
+    const hasExternalTexture = videos !== null && videos.length > 0 
 
     if( navigator.userAgent.indexOf('Firefox') === -1 && hasExternalTexture ) {
       const externalEntry = {
@@ -474,8 +493,8 @@ const seagulls = {
     })
     
     let resource = null,
-        videos   = passDesc.data.filter( d => d.type === 'video' ),
-        useVideo = navigator.userAgent.indexOf('Firefox') === -1 && videos.length > 0
+        videos   = passDesc.data !== null ? passDesc.data.filter( d => d.type === 'video' ) : null,
+        useVideo = navigator.userAgent.indexOf('Firefox') === -1 && videos !== null && videos.length > 0
 
     
     let externalTextureBindGroup = null
@@ -579,6 +598,7 @@ const seagulls = {
           __buffer, 0, v, 0, v.length * mult 
         )
       }
+
       buffer.write = ( buffer, readStart=0, writeStart=0, length=-1 ) => {
         this.device.queue.writeBuffer(
           __buffer, 
@@ -587,6 +607,32 @@ const seagulls = {
           writeStart, 
           length === -1 ? __buffer.length * mult : length
         )
+      }
+
+      buffer.read = async ( size=null, offset=0 ) => {
+        const read = __buffer
+        if( size === null ) size = read.size
+
+        await read.mapAsync(
+          GPUMapMode.READ,
+          offset*4,
+          size*4
+        )
+  
+        let data = null
+        try{
+          const copyArrayBuffer = read.getMappedRange( 0, size*4 )
+          data = copyArrayBuffer.slice( 0 )
+        }catch(e) {
+          read.unmap()
+          console.warn( 'error reading buffer with size:', size )
+        }
+        read.unmap()
+
+        data = new Float32Array( data )
+
+        //console.log( 'returned length:', data.length )
+        return data 
       }
 
       return buffer
@@ -665,24 +711,25 @@ const seagulls = {
     pingpong( a,b ) {
       return { type:'pingpong', a, b }
     },
-    
-    textures( _textures ) {
-      this.__textures = _textures.map( tex => {
-        const texture = seagulls.createTexture( this.device, this.presentationFormat, [this.width, this.height])
-        texture.src = tex
-        this.device.queue.writeTexture(
-          { texture }, 
-          tex,
-          { bytesPerRow: 4 * this.width, rowsPerImage: this.height }, 
-          {width:this.width, height:this.height}
-        )
 
-        return texture
-      })
-
-      return this
+    storageTexture( tex ) {
+      return this.texture( tex, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING, 'storageTexture' )
     },
 
+    texture( tex, usage=GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING, type='texture' ) {
+      const texture = seagulls.createTexture( this.device, 'rgba8unorm'/*CONSTANTS.textureFormat/*this.presentationFormat*/, [this.width, this.height], usage )
+      texture.src = tex
+      this.device.queue.writeTexture(
+        { texture }, 
+        tex,
+        { bytesPerRow: this.width*4, rowsPerImage: this.height }, 
+        {width:this.width, height:this.height}
+      )
+
+      texture.type = type
+      return texture
+    },
+    
     compute( args ) {
       const pass = {
         type:     'compute',
@@ -711,7 +758,6 @@ const seagulls = {
         pass.shouldPingPong = false
       }
 
-      console.log( 'compute should pingpong:', pass.shouldPingPong )
       return pass 
     },
 
@@ -754,73 +800,53 @@ const seagulls = {
       return pass
     },
 
-    run( ...passes ) {
-      const encoder = this.device.createCommandEncoder({ label: 'seagulls encoder' })
+    async run( ...passes ) {
+      await this.once( ...passes ) 
+      window.requestAnimationFrame( ()=> { this.run( ...passes ) })
+    },
 
+    copy( src, dst, size=null, offset=0 ) {
+      if( size === null ) size = src.buffer.size
+      return { src:src.buffer, dst:dst.buffer, size, offset, type:'copy' }
+    },
+
+    async once( ...passes ) {
+      const encoder = this.device.createCommandEncoder({ label: 'seagulls encoder' })
       for( let pass of passes ) {
-        if( typeof pass.onframe === 'function' ) pass.onframe()
+        try {
+          if( typeof pass.onframe === 'function' ) await pass.onframe()
+        } catch(e) {
+          console.warn('caught error with onframe for ' + pass.type + ' pass.', e ) 
+        }
 
         if( pass.type === 'render' ) {
           pass.step = seagulls.render( encoder, pass )
-        }else{
+        }else if( pass.type === 'compute' ) {
           pass.step = seagulls.pingpong( 
             encoder,
             pass
           )
+        }else if( pass.type === 'copy' ) {
+          await encoder.copyBufferToBuffer(
+            pass.src,    /* source buffer */
+            pass.offset, /* source offset */
+            pass.dst,    /* destination buffer */
+            pass.offset, /* destination offset */
+            pass.size    /* size */
+          )
+        }
+
+        try {
+          if( typeof pass.onframeend === 'function' ) await pass.onframeend()
+        } catch(e) {
+          console.warn('caught error with onframeend for ' + pass.type + ' pass.', e ) 
         }
       }
 
       this.device.queue.submit([ encoder.finish() ])
-
-      window.requestAnimationFrame( ()=> { this.run( ...passes ) })
-    },
+    }
 
   }
 }
 
 export default seagulls
-
-/*
-const sg       = await segulls.init()
-
-const frame    = sg.uniform( 0 ),
-      res      = sg.uniform( [sg.width, sg.height] ),
-      vants    = sg.buffer( vants ),
-      sampler  = sg.sampler(),
-      textureA = sg.texture( pheromones ),
-      textureB = sg.texture( pheromones, true )
-      
-const render = sg.render({
-  shader:render_shader,
-  data:[
-    frame,
-    res,
-    sampler,
-    sg.pingpong( textureA, textureB )
-  ]
-})
-
-const sim = sg.compute({
-  shader:simulation_shader,
-  data:[
-    frame,
-    res,
-    vants,
-    sampler,
-    sg.pingpong( textureA, textureB )
-  ],
-  dispatch:[ 64,64,1 ]
-})
-
-const diffuse = sg.compute({
-  shader:diffuse_shader,
-  data:[
-    sampler,
-    sg.pingpong( textureA, textureB )
-  ],
-  dispatch: { sg.width / 8, sg.height / 8, 1 ]
-})
-
-sg.run( sim, diffuse, render )
-
-*/
