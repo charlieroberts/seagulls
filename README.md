@@ -52,6 +52,55 @@ indices.
 Most demos include both a minimal version and a "verbose" version that is
 heavily explained / commented.
 
+## API
+
+Almost all functionality requires first making an instance of seagulls using a call
+to `seagulls.init()`. From there, methods consist of one of three types:
+
+1. Defining `data` to transfer to the GPU
+2. Defining shader `passes` (either compute or render)
+3. Running a pipeline of shader passes.
+
+### Class methods
+- `sg.init()`. An asynchronous method that creates a WebGPU canvas and initializes it.
+- `sg.import( filename )`. An asynchrnous method that loads a shader from a serer as a string.
+
+### Data
+- `sg.uniform( number | array )`. This method returns a seagulls uniform object that
+can be used to create a shader pass.
+- `sg.buffer( Float32Array )`. This method returns a seagulls buffer. The buffer will
+be transferred to the GPU with whatever underlying values it contains at the time this method is
+called. Note that even if you are using a single value, you must still pass a `Float32Array` of length `1`. 
+- `sg.feedback()`. This creates a texture that stores the previous frame of render output.
+- `sg.sampler()`. This creates a sampler object for sampling textures in shaders, such as the output of `sg.feedback()`.
+- `sg.video()`. This creates a texture using external video elements, such as from a webcam.
+- `sg.pingpong( sg.buffer, sg.buffer )`. Many simulations require ping-ponging buffers, so that
+a simulation will read from buffer A while writing to buffer B, and then on the next frame
+complete this process in reverse. This avoids race conditions where you are reading from the
+same data that you are changing.
+
+### Shader passes
+- `sg.render( Object )`. The render method returns a shader pass that can be used to form a shader
+pipeline. It expects a JS object with the following properties:
+  - `shader`: The text of the render shader, including both the vertex and fragment shader.
+  - `data`: An array of seagulls `data` objects, as described in the previous section.
+  - `onframe` (optional): A function that will be executed on the CPU everytime the shader is run.
+Use this to, for example, update shader uniform values.
+
+- `sg.compute( Object )`. The compute method returns a compute shader pass that can be used to form
+a shader pipeline. It expects a JS object with the following properites:
+  - `shader`: The text of the render shader, including both the vertex and fragment shader.
+  - `data`: An array of seagulls `data` objects, as described in the previous section.
+  - `onframe` (optional): A function that will be executed on the CPU everytime the shader is run.
+Use this to, for example, update shader uniform values.
+  - `dispatch`: A JavaScript array representing the intended dispatch count of the compute shader.
+
+### Run a pipeline
+- `sg.run( ...passes )`. Run a series of shader passes indefinitely, where each argument to the function
+is a separate shader pass.
+- `sg.once( ...passes )`. Run a series of shader passes a single time. 
+
+
 ## Inspiration / Resources
 - [gl-toy](http://stack.gl/packages/#stackgl/gl-toy) : A minimal shader setup library for WebGL / GLSL
 - [regl](https://github.com/regl-project/regl) : A minimal, stateless, WebGL renderer
