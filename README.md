@@ -83,14 +83,17 @@ same data that you are changing.
 - `sg.render( Object )`. The render method returns a shader pass that can be used to form a shader
 pipeline. It expects a JS object with the following properties:
   - `shader`: The text of the render shader, including both the vertex and fragment shader.
-  - `data`: An array of seagulls `data` objects, as described in the previous section.
+  - `data` (optional): An array of seagulls `data` objects, as described in the previous section.
+  While this is technically optional, almost all render shaders will use this property in some way.
   - `onframe` (optional): A function that will be executed on the CPU everytime the shader is run.
 Use this to, for example, update shader uniform values.
 
 - `sg.compute( Object )`. The compute method returns a compute shader pass that can be used to form
 a shader pipeline. It expects a JS object with the following properites:
   - `shader`: The text of the render shader, including both the vertex and fragment shader.
-  - `data`: An array of seagulls `data` objects, as described in the previous section.
+  - `data` (optional): An array of seagulls `data` objects, as described in the previous section.
+  While this is technically optional, it's impossible for a compute shader to have any effect without
+  using this property.
   - `onframe` (optional): A function that will be executed on the CPU everytime the shader is run.
 Use this to, for example, update shader uniform values.
   - `dispatch`: A JavaScript array representing the intended dispatch count of the compute shader.
