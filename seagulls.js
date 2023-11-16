@@ -175,22 +175,24 @@ const seagulls = {
     // XXX this needs to be fixed for vertex-based simulations
     // comment out | GPUShaderStage.VERTEX for readwrite in compute
     const visibility = type === 'render'
-      ? GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX 
+      ? data.type !== 'storageTexture' && data.type !== 'texture' 
+        ? GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX  
+        : GPUShaderStage.FRAGMENT 
       : GPUShaderStage.COMPUTE
 
     switch( data.type ) {
       case 'uniform':
         entry = {
-          binding:    count,
+          binding: count,
           visibility,
-          buffer:     { type:'uniform' }
+          buffer: { type:'uniform' }
         }
         break
       case 'texture': case 'feedback':
         entry = {
-          binding:    count,
+          binding: count,
           visibility,
-          texture:    {}
+          texture: {}
         }
         break
       case 'storageTexture':
@@ -204,9 +206,9 @@ const seagulls = {
         break
       case 'sampler':
         entry = {
-          binding:    count,
+          binding: count,
           visibility,
-          sampler:    {}
+          sampler: {}
         }
         break
       case 'buffer':
