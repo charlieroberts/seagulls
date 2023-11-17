@@ -16,6 +16,7 @@
 14. [*Particle*](https://charlieroberts.github.io/seagulls/demos/14_many_particles) - Many particles driven by compute+ vertex shaders. 
 15. [*Langton's Vants*](https://charlieroberts.github.io/seagulls/demos/15_vants) - Langton's virtual ants simulation. 
 16. [*Boids*](https://charlieroberts.github.io/seagulls/demos/16_boids) - The Craig Reynolds flocking simulation. 
+17. [*Slime Mold*](https://charlieroberts.github.io/seagulls/demos/17_physarum) - Physarum/slime mold simulation. 
 
 The demos in this directory are presented in a few different ways:
 
