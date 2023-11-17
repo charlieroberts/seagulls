@@ -1,5 +1,7 @@
 # seagulls
 
+[Go see the demos](https://charlieroberts.github.io/seagulls/demos)
+
 Seagulls is a small framework for minimal WebGPU setup, particularly targeting
 fullscreen fragment + compute shaders for GPU-accelerated simulations. It also
 provides a number of small helpers to manage audio analysis, video input, mouse
