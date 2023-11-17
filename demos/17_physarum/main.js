@@ -1,9 +1,8 @@
 import { default as seagulls } from '../../seagulls.js'
 
-const NUM_AGENTS       = 2048*2048 * 2,
-      GRID_SIZE        = 1,
-      W                = Math.round( window.innerWidth  / GRID_SIZE ),
-      H                = Math.round( window.innerHeight / GRID_SIZE ),
+const NUM_AGENTS       = 2048*2048*2,
+      W                = window.innerWidth,
+      H                = window.innerHeight,
       WORKGROUP_SIZE   = 8,
       dc               = Math.ceil( Math.sqrt( NUM_AGENTS/64 ) ),
       DISPATCH_COUNT   = [ dc,dc, 1 ],
@@ -26,7 +25,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   
   let p = textureSample( pheromones, sampler1, grid_pos);
 
-  return vec4(p.rgb, .75 );
+  return vec4(p.rgba );
 }`
 
 const compute_shader =`
@@ -40,7 +39,7 @@ struct Vant {
 @group(0) @binding(1) var<storage, read_write> vants: array<Vant>;
 @group(0) @binding(2) var mysampler: sampler;
 @group(0) @binding(3) var pheromones_in: texture_2d<f32>;
-@group(0) @binding(4) var pheromones_out: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(4) var pheromones_out: texture_storage_2d<rgba16float, write>;
 
 fn vantIndex( cell:vec3u ) -> u32 {
   let size = ${WORKGROUP_SIZE}u;
@@ -48,6 +47,7 @@ fn vantIndex( cell:vec3u ) -> u32 {
 }
 
 fn readSensor( pos1:vec2f, dir:f32, angle:f32, distance:vec2f ) -> f32 {
+  let res = vec2f(${W}., ${H}.);
   let read_dir = vec2f( sin( (dir+angle) * ${Math.PI*2} ), cos( (dir+angle) * ${Math.PI*2} ) );
   let offset1= read_dir * distance;
   let p = textureSampleLevel( pheromones_in, mysampler, pos1 + offset1, 0.);
@@ -58,14 +58,15 @@ fn readSensor( pos1:vec2f, dir:f32, angle:f32, distance:vec2f ) -> f32 {
 @workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE},1)
 
 fn cs(@builtin(global_invocation_id) cell:vec3u)  {
-  let turn = ${1/12};
+  let turn = .025 + abs(sin(frame/240.)) * .025;
   let index = vantIndex( cell );
   var vant:Vant = vants[ index ];
 
   let res = vec2f(${W}., ${H}.);
-  let sensorDistance = vec2f(13./res); 
+  let dist = 9.; //(13.+sin(frame/60.)*3.);
+  let sensorDistance = vec2f( dist/res); 
 
-  let pos = vant.pos / res;
+  let pos = vant.pos/res;
 
   let left     = readSensor( pos, vant.dir, -turn, sensorDistance );
   let forward  = readSensor( pos, vant.dir, 0.,    sensorDistance );
@@ -85,23 +86,28 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   }
   
   let advance_dir = vec2f( sin( vant.dir * ${Math.PI*2} ), cos( vant.dir * ${Math.PI*2} ) );
-  vant.pos = vant.pos + advance_dir * (2./res) ; 
+  vant.pos = vant.pos + advance_dir * (5./res); 
   
-  let current = textureSampleLevel( pheromones_in, mysampler, (vant.pos/res), 0. );
+  let current = textureSampleLevel( pheromones_in, mysampler, vant.pos/res, 0. );
 
-  textureStore( pheromones_out, vec2u(vant.pos), current + .125  );
+  // wrap texture write position, can this be optimized?
+  var write_pos:vec2f = vant.pos % res;
+  // wrap x if negative
+  if( sign(write_pos.x) == -1. ) { write_pos.x = res.x + write_pos.x; } 
+  // wrap y if negative
+  if( sign(write_pos.y) == -1. ) { write_pos.y = res.y + write_pos.y; } 
+
+  textureStore( pheromones_out, vec2u( write_pos ), current + .1   );
 
   vants[ index ] = vant;
 }`
 
 const compute2 = `
-
 @group(0) @binding(0) var samp: sampler;
 @group(0) @binding(1) var pheromones: texture_2d<f32>;
-@group(0) @binding(2) var pheromones_write: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(2) var pheromones_write: texture_storage_2d<rgba16float, write>;
 
 fn getP( x:u32,y:u32 ) -> f32 {
-  let pos = vec2f(f32(x)/${W}., f32(y)/${H}.);
   return textureLoad( pheromones, vec2u(x,y), 0 ).r;
 }
 
@@ -112,51 +118,37 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   let x = cell.x;
   let y = cell.y;
 
-  var state:f32 = getP( x,y ) * .25;
-  state += getP(x - 1u, y) * 0.125;
-  state += getP(x - 1u, y - 1u) * 0.0625;
-  state += getP(x, y - 1u) * 0.125;
-  state += getP(x + 1u, y - 1u ) * 0.0625;
-  state += getP(x + 1u, y) * 0.125;
-  state += getP(x + 1u, y + 1u ) * 0.0625;
-  state += getP(x, y + 1u ) * 0.125;
-  state += getP(x - 1u, y + 1u ) * 0.0625;
+  var state:f32 = getP( x,y ) * .98;
+  state += getP(x - 1u, y) * 0.005;
+  state += getP(x, y - 1u) * 0.005;
+  state += getP(x + 1u, y) * 0.005;
+  state += getP(x, y + 1u ) * 0.005;
 
-  textureStore( pheromones_write, cell.xy, vec4f(state,state,state, .125) * .995  );
+  textureStore( pheromones_write, cell.xy, vec4f(state,state,state,state) * .999);
 }
 `
  
-
 const NUM_PROPERTIES = 4 // must be evenly divisble by 4!
 const pheromones   = new Float32Array( W*H ) // hold pheromone data
 const vants        = new Float32Array( NUM_AGENTS * NUM_PROPERTIES ) // hold vant info
-let j = 0
-let cos = Math.cos
-let sin = Math.sin
-let PI2 = Math.PI * 2
-for( let i = 0; i < NUM_AGENTS * NUM_PROPERTIES; i+= NUM_PROPERTIES ) {
-  //const j = i / 16 
-  let xdir = (W/4) + cos((j/NUM_AGENTS) * PI2) * (W/4) 
-  let ydir = (H/2) + sin((j/NUM_AGENTS) * PI2) * (H/4)
 
-  if( i % 1024 === 0 ) console.log( xdir, j, NUM_AGENTS, W, W/4, j/NUM_AGENTS )
-  vants[ i ]   = xdir//W/2 //xdir//W/2//W/16 + Math.random() * W/8 //xdir*.25// (W/2) + cos((j/NUM_AGENTS) * PI2) * (W/2) 
-  vants[ i+1 ] = H/8//ydir//H/16 + Math.random() * H/8 //H/16 + Math.random() * H/8 //ydir*.25//(H/2) + sin((j/NUM_AGENTS) * PI2) * (H/2)
+let PI2 = Math.PI * 2
+for( let i = 0; i < NUM_AGENTS; i++ ) {
+  const xdir = (W/2) + (Math.sin((i/NUM_AGENTS)) * (W/4))
+  const ydir = (H/2) + (Math.sin((i/NUM_AGENTS)) * (H/4))
+
+  vants[ (i*4) ]   = Math.random() * W
+  vants[ (i*4)+1 ] = Math.random() * H 
  
-  //console.log( i, vants[i], vants[i+1], j/NUM_AGENTS )
-  vants[ i+2 ] = Math.floor( Math.random() * 16 ) / 16
-  //.
-  vants[ i+3 ] = 0 // not used Math.random() * .125 
-  j++
+  vants[ (i*4)+2 ] = i/NUM_AGENTS 
 }
 
 const sg = await seagulls.init()
-const pheromones_t = sg.texture( pheromones )
+const pheromones_t  = sg.texture( pheromones )
 const pheromones_t1 = sg.storageTexture( pheromones )
 const vants_b = sg.buffer( vants )
 const frame_u = sg.uniform( 0 )
 const pheromones_p = sg.pingpong( pheromones_t, pheromones_t1 )
-
 
 const render = sg.render({
   shader: render_shader,
@@ -166,7 +158,6 @@ const render = sg.render({
   ],
   blend:true
 })
-
 
 const sim = sg.compute({
   shader:compute_shader,

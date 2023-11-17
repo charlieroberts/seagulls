@@ -30,7 +30,7 @@ fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
   return vec4f( input, 0., 1.); 
 }
 
-`, textureFormat:'rgba8unorm'
+`, textureFormat:'rgba16float'
 }
 
 // to "fix" inconsistencies with device.writeBuffer
@@ -693,6 +693,8 @@ const seagulls = {
         sampler : this.device.createSampler({
           magFilter: 'linear',
           minFilter: 'linear',
+          addressModeU: 'repeat',
+          addressModeV: 'repeat',
         })
       }
       return sampler
@@ -719,12 +721,12 @@ const seagulls = {
     },
 
     texture( tex, usage=GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING, type='texture' ) {
-      const texture = seagulls.createTexture( this.device, 'rgba8unorm'/*CONSTANTS.textureFormat/*this.presentationFormat*/, [this.width, this.height], usage )
+      const texture = seagulls.createTexture( this.device, CONSTANTS.textureFormat/*this.presentationFormat*/, [this.width, this.height], usage )
       texture.src = tex
       this.device.queue.writeTexture(
         { texture }, 
         tex,
-        { bytesPerRow: this.width*4, rowsPerImage: this.height }, 
+        { bytesPerRow: this.width*6, rowsPerImage: this.height }, 
         {width:this.width, height:this.height}
       )
 
