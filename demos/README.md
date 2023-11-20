@@ -14,9 +14,10 @@
 12. [*Reaction Diffusion*](https://charlieroberts.github.io/seagulls/demos/12_reaction_diffusion) - Turing's morphogenesis algorithm.
 13. [*Particle*](https://charlieroberts.github.io/seagulls/demos/13_particle) - A single instanced particle drawn with a vertex shader.
 14. [*Particle*](https://charlieroberts.github.io/seagulls/demos/14_many_particles) - Many particles driven by compute+ vertex shaders. 
-15. [*Langton's Vants*](https://charlieroberts.github.io/seagulls/demos/15_vants) - Langton's virtual ants simulation. 
+15. [*Langton's Vants*](https://charlieroberts.github.io/seagulls/demos/15_vants) - Langton's virtual ants simulation with a single rule. 
 16. [*Boids*](https://charlieroberts.github.io/seagulls/demos/16_boids) - The Craig Reynolds flocking simulation. 
 17. [*Slime Mold*](https://charlieroberts.github.io/seagulls/demos/17_physarum) - Physarum/slime mold simulation. 
+18. [*Langton's Vants II*](https://charlieroberts.github.io/seagulls/demos/18_vants_ii) - Langton's virtual ants simulation, with two rules and decaying pheromones. 
 
 The demos in this directory are presented in a few different ways:
 
