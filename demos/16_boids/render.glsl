@@ -21,7 +21,7 @@ fn rotate(p:vec2f, a:f32) -> vec2f {
 @vertex 
 fn vs( input: VertexInput ) ->  @builtin(position) vec4f {
   let v = state[ input.instance ];
-  let p1 = input.pos * .035;
+  let p1 = input.pos * .02;
   // only three vertices so who cares I guess?
   let a = atan2(v.vel.x, v.vel.y);
   let p = rotate(p1, a);
@@ -32,5 +32,5 @@ fn vs( input: VertexInput ) ->  @builtin(position) vec4f {
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {;
   let blue = 0.;
-  return vec4f(1.,1.,1.,.5);//vec4f( pos.x / res.x, pos.y / res.y, blue , .25 );
+  return vec4f(1.,1.,1.,.5);
 }

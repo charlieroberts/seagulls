@@ -47,7 +47,7 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   boid.vel += (center-boid.pos) * .25;
 
   // apply effects of rule 2
-  boid.vel += keepaway * .5 ;
+  boid.vel += keepaway * .15 ;
 
   // apply effects of rule 3
   vel /= f32( count - 1u );

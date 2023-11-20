@@ -1,12 +1,19 @@
 const CONSTANTS = {
-  quadVertices: new Float32Array([
-    -1,-1,
-    1,-1,
-    1,1,
-    -1,-1,
-    1,1,
-    -1,1
-  ]),
+  shapes: {
+    quad: new Float32Array([
+      -1,-1,
+      1,-1,
+      1,1,
+      -1,-1,
+      1,1,
+      -1,1
+    ]),
+    triangle: new Float32Array([
+      0,1,
+      -.5,-1.,
+      .5,-1.
+    ])
+  },
 
   defaultStorageFlags : GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 
@@ -783,7 +790,7 @@ const seagulls = {
 
       Object.assign( pass, args )
      
-      if( pass.vertices === undefined ) pass.vertices = CONSTANTS.quadVertices 
+      if( pass.vertices === undefined ) pass.vertices = CONSTANTS.shapes.quad
 
       const [renderPipeline, renderBindGroups, vertexBuffer] = seagulls.createRenderStage(
         this.device,
