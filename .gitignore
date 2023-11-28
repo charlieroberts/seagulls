@@ -42,9 +42,6 @@ Thumbs.db
 
 node_modules
 
-*.swo
-*.swn
-*.swp
-*.swm
+*.sw*
 *~
 
