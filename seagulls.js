@@ -37,13 +37,18 @@ fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
   return vec4f( input, 0., 1.); 
 }
 
-`, textureFormat:'rgba16float'
+`, 
+
+  textureFormat:'bgra8unorm',
+  storageTextureFormat:'rgba16float'
+
+
 }
 
 // to "fix" inconsistencies with device.writeBuffer
 const mult = navigator.userAgent.indexOf('Chrome') === -1 ? 4 : 1
 
-let backTexture = null
+//let backTexture = null
 const seagulls = {
   constants:CONSTANTS,
 
@@ -73,7 +78,7 @@ const seagulls = {
       device,
       format,
       alphaMode:'premultiplied',
-      usage:GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
+      usage:GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING
     })
 
     const devicePixelRatio = window.devicePixelRatio || 1
@@ -82,7 +87,7 @@ const seagulls = {
     canvas.style.height = seagulls.height + 'px'
     canvas.style.width  = seagulls.width  + 'px'
 
-    backTexture = seagulls.createTexture( device, format, canvas )
+    //backTexture = seagulls.createTexture( device, format, canvas )
 
     return [ canvas, context, format ]
   },
@@ -95,11 +100,11 @@ const seagulls = {
   },
 
   createTexture( device, format, canvas, usage=null ) {
-    console.log( 'texture:', usage )
+    //console.log( 'texture:', usage )
     const tex = device.createTexture({
       size: Array.isArray( canvas ) ? canvas : [canvas.width, canvas.height],
       format,
-      usage: usage===null ? GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST : usage
+      usage: usage===null ? GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT  : usage
     })
 
     return tex
@@ -207,7 +212,7 @@ const seagulls = {
           binding: count,
           visibility,
           storageTexture:{
-            format:CONSTANTS.textureFormat
+            format:CONSTANTS.storageTextureFormat
           }
         }
         break
@@ -282,15 +287,15 @@ const seagulls = {
       case 'storageTexture':
         entry = {
           binding:  count,
-          resource: data.createView({ format:CONSTANTS.textureFormat }) 
+          resource: data.createView({ format:CONSTANTS.storageTextureFormat }) 
         }
         break;
-      case 'feedback':
+      /*case 'feedback':
         entry = {
           binding:  count,
           resource: backTexture.createView() 
         }
-        break
+        break*/
       case 'sampler':
         entry = {
           binding: count,
@@ -480,7 +485,7 @@ const seagulls = {
   },
 
   render( encoder, passDesc ) {
-    const shouldCopy = passDesc.context !== null
+    const shouldCopy = passDesc.context !== null || passDesc.copy !== nulll
 
     const renderPassDescriptor = {
       label: 'render',
@@ -518,7 +523,7 @@ const seagulls = {
           layout: externalLayout,
           entries: [{
             binding: 0,
-            resource
+            resource//vec4f( out, 1. );
           }]
         }) 
       }catch( e ) {
@@ -553,15 +558,25 @@ const seagulls = {
     pass.draw(passDesc.vertices.length/2, passDesc.count )  
     pass.end()
 
-    if( shouldCopy ) {
+    
+    if( passDesc.copy !== null ) {
+      encoder.copyTextureToTexture(
+        { texture: swapChainTexture },
+        { texture: passDesc.copy },
+        [ seagulls.width, seagulls.height ]
+      )
+
+    }
+
+    /*if( passDesc.context !== null ) {
+      console.log( passDesc )
       // Copy the rendering results from the swapchain into |backTexture|.
       encoder.copyTextureToTexture(
         { texture: swapChainTexture },
         { texture: backTexture },
         [ seagulls.width, seagulls.height ]
       )
-    }
-
+    }*/
 
     return passDesc.step
   },
@@ -720,26 +735,48 @@ const seagulls = {
     },
 
     pingpong( a,b ) {
+      if( a.format !== b.format ) {
+        console.error( `seagulls error: In order to pingpong textures the read texture must be specified as type rgba16float (e.g. sg.texture( tex, 'rgba16float' ); storageTextures use this format automatically`)
+      }
       return { type:'pingpong', a, b }
     },
 
-    storageTexture( tex ) {
-      return this.texture( tex, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING, 'storageTexture' )
+    storageTexture( tex, format=null ) {
+      if( format === null ) format = CONSTANTS.storageTextureFormat
+      
+      const texture = this.texture( 
+        tex, 
+        format, 
+        GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING, 
+        'storageTexture' 
+      )
+
+      return texture
     },
 
-    texture( tex, usage=GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING, type='texture' ) {
-      const texture = seagulls.createTexture( this.device, CONSTANTS.textureFormat/*this.presentationFormat*/, [this.width, this.height], usage )
+    texture( tex, format=null, usage=GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING, type='texture' ) {
+      if( format === null ) format = CONSTANTS.textureFormat
+
+      if( format === CONSTANTS.textureFormat ) usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST 
+
+      const texture = seagulls.createTexture( this.device, format, [this.width, this.height], usage )
+      texture.type = type 
       texture.src = tex
+      
+      const numElements = this.width * this.height
+      const numChannels = tex.byteLength / numElements
+      const bytesPerElement = numChannels * tex.BYTES_PER_ELEMENT
+      console.log( numElements, numChannels, bytesPerElement )
       this.device.queue.writeTexture(
         { texture }, 
         tex,
-        { bytesPerRow: this.width*6, rowsPerImage: this.height }, 
-        {width:this.width, height:this.height}
+        { bytesPerRow: this.width * bytesPerElement, rowsPerImage: this.height }, 
+        { width:this.width, height:this.height }
       )
 
-      texture.type = type
       return texture
     },
+
     
     compute( args ) {
       const pass = {
@@ -774,18 +811,20 @@ const seagulls = {
 
 
     render( args ) {
+      if( args.view !== undefined ) args.view = args.view.createView()
       const pass = {
         type:   'render',
         device: this.device,
         presentationFormat: this.presentationFormat,
         clearColor: this.clearColor,
-        view: this.view,
+        view: args.view || this.view,
         step: 0,
         canvas: this.canvas,
         context: this.context,
         data:null,
         shader:null,
-        count:1
+        count:1,
+        copy: args.copy || null
       }
 
       Object.assign( pass, args )
