@@ -5,14 +5,12 @@
 fn fs( @builtin(position) input : vec4f ) -> @location(0) vec4f {
 
   let idx: u32 = u32( input.y * res.x + input.x - res.x * .5 ) * 2u;
-  let a = cellState[ idx ];
   let b = cellState[ idx+1u ];
 
   let light_dir = vec2f(2.,2.);
   let light_idx = u32( (input.y + light_dir.y) * res.x + ((input.x + light_dir.x) - res.x * .5 ) ) * 2u;
   var light:f32 = 0.;
 
-  let a1 = cellState[ light_idx ]; 
   let b1 = cellState[ light_idx + 1u ]; 
   if( b1 > .2 ) { light = (b1 - .2)*5.; }
 

@@ -7,14 +7,18 @@ const sg     = await seagulls.init(),
 
 await Video.init()
 
+const back = new Float32Array( seagulls.width * seagulls.height * 4 )
+const feedback_t = sg.texture( back ) 
+
 const render = sg.render({
   shader,
   data:[
     sg.uniform([ sg.width, sg.height ]),
     sg.sampler(),
-    sg.feedback(),
+    feedback_t,
     sg.video( Video.element )
-  ]
+  ],
+  copy: feedback_t
 })
 
 sg.run( render )

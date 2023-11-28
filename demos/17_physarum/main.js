@@ -144,7 +144,7 @@ for( let i = 0; i < NUM_AGENTS; i++ ) {
 }
 
 const sg = await seagulls.init()
-const pheromones_t  = sg.texture( pheromones )
+const pheromones_t  = sg.texture( pheromones, 'rgba16float' )
 const pheromones_t1 = sg.storageTexture( pheromones )
 const vants_b = sg.buffer( vants )
 const frame_u = sg.uniform( 0 )
