@@ -766,7 +766,8 @@ const seagulls = {
       const numElements = this.width * this.height
       const numChannels = tex.byteLength / numElements
       const bytesPerElement = numChannels * tex.BYTES_PER_ELEMENT
-      console.log( numElements, numChannels, bytesPerElement )
+      //console.log( numElements, numChannels, bytesPerElement )
+      
       this.device.queue.writeTexture(
         { texture }, 
         tex,
