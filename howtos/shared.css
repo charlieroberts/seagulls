@@ -1,0 +1,37 @@
+html {
+  margin:0
+}
+
+body {
+  margin:0;
+  padding:0;
+  background:black;
+}
+
+canvas {
+  width:100%;
+  height:100%;
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:-1;
+}
+
+code {
+  top:3em;
+  color:white;
+  padding:1em;
+  display:inline-block;
+  font-family:monospace;
+  white-space:pre;
+  background:rgba(0,0,0,.2);
+  filter: drop-shadow(2px 1px 0px black);
+  font-size:1.25rem;
+  overflow:scroll;
+}
+
+#buttons {
+  display:block;
+  padding-left:1.5em;
+}
+
