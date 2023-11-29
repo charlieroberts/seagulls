@@ -17,7 +17,11 @@
 15. [*Langton's Vants*](https://charlieroberts.github.io/seagulls/demos/15_vants) - Langton's virtual ants simulation with a single rule. 
 16. [*Boids*](https://charlieroberts.github.io/seagulls/demos/16_boids) - The Craig Reynolds flocking simulation. 
 17. [*Slime Mold*](https://charlieroberts.github.io/seagulls/demos/17_physarum) - Physarum/slime mold simulation. 
-18. [*Langton's Vants II*](https://charlieroberts.github.io/seagulls/demos/18_vants_ii) - Langton's virtual ants simulation, with two rules and decaying pheromones. 
+18. [*Langton's Vants II*](https://charlieroberts.github.io/seagulls/demos/18_vants_ii) - Langton's virtual ants simulation, with two rules and decaying pheromones.
+19. [*Boids with trails*](https://charlieroberts.github.io/seagulls/demos/19_boids_trails) - In this demo, the boids simulation is rendered to a texture so that feedback effects can be applied.
+20. [*Post-processing*](https://charlieroberts.github.io/seagulls/demos/20_postprocessing) - Demonstrates how to render to texture and then color process the results.
+21. [*Multipass post-processing*](https://charlieroberts.github.io/seagulls/demos/21_postprocessing_twopassblur) - A two-pass gaussian blur post-processing effect.
+
 
 The demos in this directory are presented in a few different ways:
 
