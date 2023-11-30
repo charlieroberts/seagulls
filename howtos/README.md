@@ -18,7 +18,7 @@ These files are the best places to go to understand how seagulls work.
 9. [*Video Feedback*](https://charlieroberts.github.io/seagulls/howtos/9_video_feedback) - how to use live video feeds + feedback together
 10. [*Simplest Compute*](https://charlieroberts.github.io/seagulls/howtos/10_simplest_compute) - Using a compute shader to incremeent a single number, which in turn is used to determine the color of all pixels in a fragment shader.
 11. [*Compute with position*](https://charlieroberts.github.io/seagulls/howtos/11_compute_with_position) - Performing compute shader computations for every pixel on the screen.
-12. [*Particle*](https://charlieroberts.github.io/seagulls/demos/12_particle) - A single instanced particle drawn with a vertex shader.
-13. [*Many particles*](https://charlieroberts.github.io/seagulls/demos/13_many_particles) - Many particles driven by compute + vertex shaders.
-14. [*Post-processing*](https://charlieroberts.github.io/seagulls/demos/14_postprocessing) - Demonstrates how to render to texture and then color process the results.
-15. [*Multipass post-processing*](https://charlieroberts.github.io/seagulls/demos/15_postprocessing_twopassblur) -A two-pass gaussian blur post-processing effect.
+12. [*Particle*](https://charlieroberts.github.io/seagulls/howtos/12_particle) - A single instanced particle drawn with a vertex shader.
+13. [*Many particles*](https://charlieroberts.github.io/seagulls/howtos/13_many_particles) - Many particles driven by compute + vertex shaders.
+14. [*Post-processing*](https://charlieroberts.github.io/seagulls/howtos/14_postprocessing) - Demonstrates how to render to texture and then color process the results.
+15. [*Multipass post-processing*](https://charlieroberts.github.io/seagulls/howtos/15_postprocessing_twopassblur) -A two-pass gaussian blur post-processing effect.
