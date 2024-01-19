@@ -162,7 +162,7 @@ const seagulls = {
   createSimulationPipeline( device, pingponglayout, code ) {
     const layout = device.createPipelineLayout({
       label:'cell pipeline layout',
-      bindGroupLayouts: [ pingponglayout ]
+      bindGroupLayouts: Array.isArray( pingponglayout ) ? pingponglayout : [ pingponglayout ]
     })
 
     const module = device.createShaderModule({
@@ -314,7 +314,7 @@ const seagulls = {
     return entry
   },
 
-  createBindGroups( device, layout, data, pingpong=false ) {
+  createBindGroups( device, layout, data, pingpong=false, type='render' ) {
     const entriesA = [],
           entriesB = []
 
@@ -342,7 +342,7 @@ const seagulls = {
         }
       }
     }
-
+    
     const bindGroups = [
       device.createBindGroup({
         label:`${name} a`,
@@ -456,8 +456,27 @@ const seagulls = {
     if( data !== null )
       shouldPingPong = !!data.reduce( (a,v) => a + (v.type === 'pingpong' ? 1 : 0), 0 )
 
-    const simLayout     = seagulls.createBindGroupLayout( device, data, 'compute', 'compute layout' ) 
+    let simLayout     = seagulls.createBindGroupLayout( device, data, 'compute', 'compute layout' ) 
     const simBindGroups = seagulls.createBindGroups( device, simLayout, data, shouldPingPong, 'compute' ) 
+
+    const videos = data !== null ? data.filter( d => d.type === 'video' ) : null
+    const hasExternalTexture = videos !== null && videos.length > 0 
+
+    if( navigator.userAgent.indexOf('Firefox') === -1 && hasExternalTexture ) {
+      const externalEntry = {
+        binding: 0,
+        visibility: GPUShaderStage.COMPUTE,
+        externalTexture:{}
+      }
+
+      const externalLayout = device.createBindGroupLayout({
+        label:'external layout',
+        entries:[ externalEntry ]
+      })
+
+      simLayout = [ simLayout, externalLayout ]
+    }
+
    
     const simPipeline   = seagulls.createSimulationPipeline( device, simLayout, computeShader )
 
@@ -465,13 +484,38 @@ const seagulls = {
   },
 
   pingpong( encoder, pass ) {
+    const videos   = pass.data !== null 
+      ? pass.data.filter( d => d.type === 'video' ) 
+      : null
+
+    const useVideo = navigator.userAgent.indexOf('Firefox') === -1 
+      && videos !== null 
+      && videos.length > 0
+      
+    let externalTextureBindGroup = null
+    if( useVideo ) {
+      const externalLayout = pass.device.createBindGroupLayout({
+        label:'external layout',
+        entries:[{
+          binding:0,
+          visibility: GPUShaderStage.COMPUTE,
+          externalTexture: {}
+        }]
+      })
+      
+      externalTextureBindGroup = seagulls.getExternalVideo( pass, externalLayout, videos )
+    }
+
     for( let i = 0; i < pass.times; i++ ) {
       const computePass = encoder.beginComputePass()
       const bindGroupIndex = pass.shouldPingPong === true ? pass.step++ % 2 : 0
       
       computePass.setPipeline( pass.pipeline )
       computePass.setBindGroup( 0, pass.bindGroups[ bindGroupIndex ] ) 
-
+      if( useVideo ) {
+        computePass.setBindGroup( 1, externalTextureBindGroup )
+      }   
+      
       if( Array.isArray( pass.dispatchCount ) ) {
         computePass.dispatchWorkgroups( pass.dispatchCount[0], pass.dispatchCount[1], pass.dispatchCount[2] )
       }else{
@@ -482,6 +526,31 @@ const seagulls = {
     }
     
     return pass.step
+  },
+
+  // XXX is there some way to only do this once per pass
+  // if the video is being used in both compute and 
+  // render shaders? is it even expensive to do this twice?
+  getExternalVideo( passDesc, externalLayout, videos ) {
+    let externalTextureBindGroup = null
+
+    try {
+      const resource = passDesc.device.importExternalTexture({
+        source:videos[0].src//passDesc.textures[0]
+      })
+
+      externalTextureBindGroup = passDesc.device.createBindGroup({
+        layout: externalLayout,
+        entries: [{
+          binding: 0,
+          resource//vec4f( out, 1. );
+        }]
+      }) 
+    }catch( e ) {
+      console.log( e )
+    }
+
+    return externalTextureBindGroup
   },
 
   render( encoder, passDesc ) {
@@ -496,43 +565,29 @@ const seagulls = {
         storeOp: 'store',
       }]
     }
-
-    const externalLayout = passDesc.device.createBindGroupLayout({
-      label:'external layout',
-      entries:[{
-        binding:0,
-        visibility: GPUShaderStage.FRAGMENT,
-        externalTexture: {}
-      }]
-    })
     
-    let resource = null,
-        videos   = passDesc.data !== null ? passDesc.data.filter( d => d.type === 'video' ) : null,
-        useVideo = navigator.userAgent.indexOf('Firefox') === -1 && videos !== null && videos.length > 0
+    const videos   = passDesc.data !== null 
+            ? passDesc.data.filter( d => d.type === 'video' ) 
+            : null
 
-    
+    const useVideo = navigator.userAgent.indexOf('Firefox') === -1 
+            && videos !== null 
+            && videos.length > 0
+
     let externalTextureBindGroup = null
-
-    if( useVideo )  {
-      try {
-        resource = passDesc.device.importExternalTexture({
-          source:videos[0].src//passDesc.textures[0]
-        })
-
-        externalTextureBindGroup = passDesc.device.createBindGroup({
-          layout: externalLayout,
-          entries: [{
-            binding: 0,
-            resource//vec4f( out, 1. );
-          }]
-        }) 
-      }catch( e ) {
-        console.log( e )
-        shouldBind = false
-      }
+    if( useVideo ) {
+      const externalLayout = passDesc.device.createBindGroupLayout({
+        label:'external layout',
+        entries:[{
+          binding:0,
+          visibility: GPUShaderStage.FRAGMENT,
+          externalTexture: {}
+        }]
+      })
+      
+      externalTextureBindGroup = seagulls.getExternalVideo( passDesc, externalLayout, videos )
     }
-
-    // in case we want a backbuffer etc. eventually this should probably be
+        // in case we want a backbuffer etc. eventually this should probably be
     // replaced with a more generic post-processing setup
     let swapChainTexture = null
     if( shouldCopy ) {
@@ -567,16 +622,6 @@ const seagulls = {
       )
 
     }
-
-    /*if( passDesc.context !== null ) {
-      console.log( passDesc )
-      // Copy the rendering results from the swapchain into |backTexture|.
-      encoder.copyTextureToTexture(
-        { texture: swapChainTexture },
-        { texture: backTexture },
-        [ seagulls.width, seagulls.height ]
-      )
-    }*/
 
     return passDesc.step
   },
@@ -659,6 +704,40 @@ const seagulls = {
         return data 
       }
 
+      buffer.loopRead = async ( size = null, offset = 0, cb ) => {
+        const __read = async function() {
+          const read = __buffer
+          if( size === null ) size = read.size
+
+          await read.mapAsync(
+            GPUMapMode.READ,
+            offset*4,
+            size*4
+          )
+          
+          cb( read )
+
+          __read()
+        }
+        __read()
+      }
+
+      buffer.convert = function( size ) {
+        let data = null
+        try{
+          const copyArrayBuffer = __buffer.getMappedRange( 0, size*4 )
+          data = copyArrayBuffer.slice( 0 )
+        }catch(e) {
+          __buffer.unmap()
+          console.warn( 'error reading buffer with size:', size )
+        }
+        __buffer.unmap()
+
+        data = new Float32Array( data )
+
+        return data
+      }
+
       return buffer
     },
 
@@ -709,16 +788,20 @@ const seagulls = {
       return buffer
     },
 
-    sampler() {
+    sampler( args=null ) {
+      const defaults = {
+        magFilter: 'linear',
+        minFilter: 'linear',
+        addressModeU: 'repeat',
+        addressModeV: 'repeat',
+      }
+      if( args !== null ) Object.assign( defaults, args )
+
       const sampler = { 
         type:'sampler',
-        sampler : this.device.createSampler({
-          magFilter: 'linear',
-          minFilter: 'linear',
-          addressModeU: 'repeat',
-          addressModeV: 'repeat',
-        })
+        sampler : this.device.createSampler( defaults )
       }
+
       return sampler
     },
 
@@ -873,10 +956,7 @@ const seagulls = {
         if( pass.type === 'render' ) {
           pass.step = seagulls.render( encoder, pass )
         }else if( pass.type === 'compute' ) {
-          pass.step = seagulls.pingpong( 
-            encoder,
-            pass
-          )
+          pass.step = seagulls.pingpong( encoder, pass )
         }else if( pass.type === 'copy' ) {
           await encoder.copyBufferToBuffer(
             pass.src,    /* source buffer */
