@@ -9,3 +9,4 @@ This directory contains "complete" simulation examples; see the [howtos]('./howt
 5. [*Boids (basic)*](https://charlieroberts.github.io/seagulls/demos/5_boids_basic) - The Craig Reynolds flocking simulation. 
 6. [*Boids (advanced)*](https://charlieroberts.github.io/seagulls/demos/6_boids_advanced) - Flocking simulation with instances rendered to a texture so that feedback can be applied. The mouse position also repels agents. 
 7. [*Slime Mold*](https://charlieroberts.github.io/seagulls/demos/7_physarum) - Physarum/slime mold simulation. 
+8. [*Slime Mold w/ video*](https://charlieroberts.github.io/seagulls/demos/8_physarum_video) - Physarum consuming live video (Chrome only)
