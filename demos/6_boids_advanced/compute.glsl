@@ -10,7 +10,7 @@ struct Particle {
 
 fn cellindex( cell:vec3u ) -> u32 {
   let size = 8u;
-  return cell.x + (cell.y * size) + (cell.z * size * size);
+  return cell.x + (cell.y * (3072u/64u));// + (cell.z * size * size);
 }
 
 @compute
@@ -50,7 +50,7 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   boid.vel += (center-boid.pos) * .2;
 
   // apply effects of rule 2
-  boid.vel += keepaway * .1;
+  boid.vel += keepaway * .2;
 
   // apply effects of rule 3
   vel /= f32( count - 1u );
@@ -62,7 +62,7 @@ fn cs(@builtin(global_invocation_id) cell:vec3u)  {
   }
 
   // limit speed
-  boid.vel = select( boid.vel, (boid.vel / length(boid.vel)) * 5., length(boid.vel ) > 5. );
+  boid.vel = select( boid.vel, (boid.vel / length(boid.vel)) * 10., length( boid.vel ) > 10. );
  
   let border = .85;
   if( boid.pos.x < -border ) { boid.vel.x -= (boid.pos.x - -border) * 10.; }
