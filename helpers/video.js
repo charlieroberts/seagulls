@@ -1,11 +1,15 @@
 const Video = {
   element:null,
   hasPermissions: false,
-  async init() {
+  async init( isCam=true) {
     const video = document.createElement('video');
     video.style.display = 'none'
     document.body.appendChild( video )
-    return await Video.start( video )
+    if( isCam ) {
+      return await Video.start( video )
+    }else{
+      video.src = isCam
+    }
   },
 
   async start( element ) {
