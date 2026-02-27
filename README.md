@@ -1,5 +1,7 @@
 # seagulls
 
+ARCHIVED: this [project has moved to codeberg](https://codeberg.org/charlieroberts/seagulls)
+
 [Go see the demo simulations](https://charlieroberts.github.io/seagulls/demos) and then [learn how to use seagulls](https://charlieroberts.github.io/seagulls/howtos).
 
 Seagulls is a small framework for minimal WebGPU setup, particularly targeting
