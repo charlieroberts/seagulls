@@ -39,7 +39,8 @@ fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
 
 `, 
 
-  textureFormat:'bgra8unorm',
+  //textureFormat:'bgra8unorm',
+  textureFormat:navigator.gpu.getPreferredCanvasFormat(),
   storageTextureFormat:'rgba16float'
 
 
@@ -60,6 +61,11 @@ const seagulls = {
       console.error('need a browser that supports WebGPU')
       return
     }
+
+    device.addEventListener("uncapturederror", event => {
+      console.error("A WebGPU error was not captured:", event.error)
+    })
+
 
     return device
   },
@@ -652,6 +658,7 @@ const seagulls = {
       __textures:null
     })
 
+    
     return instance
   },
 
@@ -664,7 +671,8 @@ const seagulls = {
       buffer.clear = ()=> {
         v.fill(0)
         this.device.queue.writeBuffer(
-          __buffer, 0, v, 0, v.length * mult 
+          //__buffer, 0, v, 0, v.length * mult 
+          __buffer, 0, v 
         )
       }
 
@@ -673,8 +681,8 @@ const seagulls = {
           __buffer, 
           readStart, 
           __buffer, 
-          writeStart, 
-          length === -1 ? __buffer.length * mult : length
+          writeStart 
+          //length === -1 ? __buffer.length * mult : length
         )
       }
 
@@ -753,7 +761,8 @@ const seagulls = {
           Object.defineProperty( buffer.value, i, {
             set(v) {
               storage[ i ] = v
-              device.queue.writeBuffer( buffer, i*4, storage, i*4, mult )
+              //device.queue.writeBuffer( buffer, i*4, storage, i*4, mult )
+              device.queue.writeBuffer( buffer, i*4, storage, i*4 )
             },
             get() {
               return storage[ i ]
@@ -765,7 +774,8 @@ const seagulls = {
             storage.set( v )
             // apparently docs are wrong, all arguments are actually in bytes wtf
             // https://developer.mozilla.org/en-US/docs/Web/API/GPUQueue/writeBuffer
-            device.queue.writeBuffer( buffer, 0, storage, 0, v.length * mult )
+            device.queue.writeBuffer( buffer, 0, storage, 0 )
+            //device.queue.writeBuffer( buffer, 0, storage, 0, v.length * mult )
           },
           get() {
             return storage
@@ -775,7 +785,8 @@ const seagulls = {
         Object.defineProperty( buffer, 'value', {
           set( v ) {
             storage[ 0 ] = v
-            device.queue.writeBuffer( buffer, 0, storage, 0, mult )
+            device.queue.writeBuffer( buffer, 0, storage, 0 )
+            //device.queue.writeBuffer( buffer, 0, storage, 0, mult )
           },
           get() {
             return storage[0]
@@ -840,7 +851,7 @@ const seagulls = {
     texture( tex, format=null, usage=GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING, type='texture' ) {
       if( format === null ) format = CONSTANTS.textureFormat
 
-      if( format === CONSTANTS.textureFormat ) usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST 
+      if( format === CONSTANTS.textureFormat ) usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT 
 
       const texture = seagulls.createTexture( this.device, format, [this.width, this.height], usage )
       texture.type = type 
@@ -848,8 +859,9 @@ const seagulls = {
       
       const numElements = this.width * this.height
       const numChannels = tex.byteLength / numElements
-      const bytesPerElement = numChannels * tex.BYTES_PER_ELEMENT
+      const bytesPerElement = numChannels //* tex.BYTES_PER_ELEMENT
       //console.log( numElements, numChannels, bytesPerElement )
+      
       
       this.device.queue.writeTexture(
         { texture }, 
@@ -857,6 +869,11 @@ const seagulls = {
         { bytesPerRow: this.width * bytesPerElement, rowsPerImage: this.height }, 
         { width:this.width, height:this.height }
       )
+      /*this.device.queue.copyExternalImageToTexture(
+        { source:texture, flipY: true },
+        { texture },
+        { width: this.width, height: this.height },
+      )*/
 
       return texture
     },
